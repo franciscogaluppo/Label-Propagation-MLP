@@ -5,7 +5,7 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import make_scorer
 from copy import copy
 
-def loss_function(y, y_hat):
+def loss(y, y_hat):
     """
     Função de erro
     :param y: targets do treino
@@ -25,7 +25,6 @@ def learn(y_labeled, X_labeled, X_unlabeled, y_train, X_train, mu=1., verbose=Fa
     :param verbose: do you want to print stuff?
     :return:
     """
-    loss = make_scorer(loss_function, greater_is_better=False)
     
     for iter in range(100):
 
@@ -33,7 +32,8 @@ def learn(y_labeled, X_labeled, X_unlabeled, y_train, X_train, mu=1., verbose=Fa
         clf = MLPClassifier()
         clf.fit(X, y)
 
-    
+        #w = ...
+        y_hat = label_propagation(y_labeled, X_labeled, X_unlabeled, X_train, W, mu)
 
         if loss(y_train, y_hat) < 0.01:
             if verbose:
@@ -44,6 +44,7 @@ def learn(y_labeled, X_labeled, X_unlabeled, y_train, X_train, mu=1., verbose=Fa
             if verbose:
             print('Not converged??')
 
+    return(y_hat)
 
 def label_propagation(y_labeled, X_labeled, X_unlabeled, X_train, W, mu=1.):
     """
