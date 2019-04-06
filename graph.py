@@ -1,7 +1,6 @@
 import numpy as np
 
 # TODO: Não podemos ter vértices isolados. A não teria inversa
-# TODO: Esqueci que tem que ser direcionado...
 
 class graph():
     """
@@ -12,16 +11,17 @@ class graph():
         n = self.vertices
 
         # Cria matriz de adjacência
-        self.adj = np.random.randint(0, 2, size=(n,n))
-        for i in range(n):
-            self.adj[i][i] = 0
+        v = np.random.randint(0, 2, n*(n-1)//2)
+        self.adj = np.zeros((n,n), dtype=int)
+        self.adj[np.tril_indices(self.adj.shape[0],-1)] = v
+        self.adj = np.transpose(self.adj)
+        self.adj[np.tril_indices(self.adj.shape[0],-1)] = v
 
         # Cria matriz A
         self.D = np.array([sum(self.adj[i]) for i in range(n)])
-        self.A = np.zeros((n,n))
+        self.A = np.zeros((n,n), dtype=int)
         for i in range(n):
             self.A[(i,i)] = self.D[i]
-
 
         # Guarda as arestas 
         self.edges = np.sum(self.adj)
