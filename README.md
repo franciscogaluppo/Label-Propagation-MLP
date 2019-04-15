@@ -28,4 +28,3 @@ Gerar rótulos | :x:
 Função de avaliar a acurácia | :x:
 Função do SGD (ou só GD mesmo) | :x:
 Checar se ta tudo ok no arquivo do murai | :x:
-Gerar pesos | :x:
