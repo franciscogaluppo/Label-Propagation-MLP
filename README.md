@@ -24,7 +24,7 @@ Tarefa | Status
 --- | ---
 Consertar a criação de vértices isolados | :+1:
 Implementar os pesos das arestas | :+1:
-Gerar rótulos | :x:
+Gerar rótulos | :+1:
 Função de avaliar a acurácia | :x:
 Função do SGD (ou só GD mesmo) | :x:
 Checar se ta tudo ok no arquivo do murai | :x:

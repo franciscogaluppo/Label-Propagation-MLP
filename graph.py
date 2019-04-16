@@ -1,4 +1,5 @@
 import numpy as np
+from copy import copy
 
 class graph():
     """
@@ -25,6 +26,9 @@ class graph():
         self.create_edges()
         for i in range(n_lab):
             self.A[(i,i)] += 1
+        
+        # Cria as features das arestas
+        self.X = np.random.normal(size=(self.edges, self.n_feat))
 
         # Faz a chamada da criação dos rótulos
         self.create_labels()
@@ -79,9 +83,8 @@ class graph():
         Ignora os rótulos dos n_unlab ao final.
         """
         
-        # Cria as features das arestas
-        self.X = np.random.normal(size=(self.edges, self.n_feat))
-        
+        n = self.vertices
+
         # Número oculto
         n_hidden = 30
 
@@ -96,11 +99,31 @@ class graph():
         reLu = lambda x: np.maximum(x, 0, x)
 
         # Cria os pesos
-        self.W = np.zeros((self.vertices, self.vertices))
+        W = np.zeros((n, n))
         for e in range(self.edges):
             i, j = self.edge_list[e]
-            self.W[(i,j)] = W2 @ reLu(W1 @ self.X[e] + b1) + b2
-            self.W[(j,i)] = self.W[(i,j)]
+            W[(i,j)] = W2 @ reLu(W1 @ self.X[e] + b1) + (b2 if b2 > 0 else 0)
+            W[(j,i)] = W[(i,j)]
 
+        # Gera label inicial para alguns
+        n_known = int(n / 10) + 2
+        known = (-1)**np.random.randint(0,2,n_known)
+        y0 = np.concatenate(((known), np.zeros(n-n_known)))
+        y_hat = copy(y0)
 
+        # Matriz A
+        D = np.sum(W,0) 
+        A = np.diag(np.concatenate((np.ones(n_known), np.zeros(n-n_known))) + D)
+     
+        # Itera para convergir
+        for iter in range(100):
+            y_hat_old = y_hat
+            y_hat = np.linalg.solve(A, np.dot(W, y_hat) + y0)
+     
+            if np.linalg.norm(y_hat - y_hat_old) < 0.01:
+                break
 
+        # Guarda Rótulos
+        self.Y0 = np.concatenate((y_hat[0:(self.n_lab + self.n_train -1)], np.zeros(self.n_unlab)))
+
+        self.Y0_bin = [-1 if x < 0 else (1 if x > 0 else 0) for x in self.Y0]
