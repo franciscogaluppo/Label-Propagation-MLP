@@ -1,5 +1,8 @@
 import numpy as np
 from copy import copy
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+import networkx as nx
 
 class graph():
     """
@@ -32,6 +35,7 @@ class graph():
 
         # Faz a chamada da criação dos rótulos
         self.create_labels()
+        self.pos = 0
 
     def create_edges(self):
         """
@@ -40,7 +44,8 @@ class graph():
         n = self.vertices
         
         # Cria matriz de adjacência
-        v = np.random.randint(0, 2, n*(n-1)//2)
+        #v = np.random.randint(0, 2, n*(n-1)//2)
+        v = np.random.binomial(1, 0.1, n*(n-1)//2)
         self.adj = np.zeros((n,n), dtype=int)
         self.adj[np.tril_indices(self.adj.shape[0],-1)] = v
         self.adj = np.transpose(self.adj)
@@ -106,7 +111,7 @@ class graph():
             W[(j,i)] = W[(i,j)]
 
         # Gera label inicial para alguns
-        n_known = int(n / 10) + 2
+        n_known = int(n / 2)
         known = (-1)**np.random.randint(0,2,n_known)
         y0 = np.concatenate(((known), np.zeros(n-n_known)))
         y_hat = copy(y0)
@@ -114,19 +119,50 @@ class graph():
         # Matriz A
         D = np.sum(W,0) 
         A = np.diag(np.concatenate((np.ones(n_known), np.zeros(n-n_known))) + D)
-     
+
+        self.hist = [y_hat]
+
         # Itera para convergir
         for iter in range(100):
             y_hat_old = y_hat
             y_hat = np.linalg.solve(A, np.dot(W, y_hat) + y0)
-     
+            self.hist.append(y_hat)
+
             if np.linalg.norm(y_hat - y_hat_old) < 0.01:
                 break
 
         # Guarda Rótulos
+        delimiter = lambda y: [-1 if x < 0 else (1 if x > 0 else 0) for x in y]
         self.y_hat = y_hat
-        self.y_hat_not_real = [-1 if x < 0 else (1 if x > 0 else 0) for x in self.y_hat]
+        self.y_hat_not_real = delimiter(self.y_hat)
 
         self.y_real = np.concatenate((y_hat[0:(self.n_lab + self.n_train)], np.zeros(self.n_unlab)))
 
-        self.y = [-1 if x < 0 else (1 if x > 0 else 0) for x in self.y_real]
+        self.y = delimiter(self.y_real)
+
+
+    def animate_convergence(self, delimiter=False, save=False, name="teste.gif"):
+        H = nx.from_numpy_matrix(self.adj)
+        if self.pos == 0:
+            self.pos = nx.spring_layout(H)
+        fig = plt.figure()
+
+        vertices = nx.draw_networkx_nodes(H, self.pos, node_color=self.hist[0])
+        arestas = nx.draw_networkx_edges(H, self.pos) 
+
+        def update(n):
+            iter = self.hist[n]
+            if delimiter:
+                iter = np.array([-1 if x < 0 else (1 if x > 0 else 0) for x in iter])
+            vertices.set_array(iter)
+            return vertices,
+        
+            #nx.draw(H, with_labels=True, node_color=iter, pos=pos)
+        
+        anim = FuncAnimation(fig, update, blit=True, interval=500, frames=len(self.hist))
+        
+        if save:
+            anim.save(name)
+        else:
+            plt.show()
+
