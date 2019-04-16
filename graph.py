@@ -142,25 +142,40 @@ class graph():
 
 
     def animate_convergence(self, delimiter=False, save=False, name="teste.gif"):
+        """
+        Cria uma animação do algoritmo de label propagation
+        """
+
+        # Cria grafo
         H = nx.from_numpy_matrix(self.adj)
+        
+        # Checa se pos já foi calculada antes
         if self.pos == 0:
             self.pos = nx.spring_layout(H)
-        fig = plt.figure()
 
+        # Cria figura
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        plt.axis('off')
+
+        # Guarda posições dos vértices e arestas
         vertices = nx.draw_networkx_nodes(H, self.pos, node_color=self.hist[0])
         arestas = nx.draw_networkx_edges(H, self.pos) 
 
+        # Função que atualiza o plot
         def update(n):
             iter = self.hist[n]
             if delimiter:
                 iter = np.array([-1 if x < 0 else (1 if x > 0 else 0) for x in iter])
             vertices.set_array(iter)
+            ax.set_title("Iteração: {}".format(n), loc='left')
+    
             return vertices,
         
-            #nx.draw(H, with_labels=True, node_color=iter, pos=pos)
+        # Chama animação
+        anim = FuncAnimation(fig, update, blit=False, interval=500, frames=len(self.hist))
         
-        anim = FuncAnimation(fig, update, blit=True, interval=500, frames=len(self.hist))
-        
+        # Salva ou exibe
         if save:
             anim.save(name)
         else:
