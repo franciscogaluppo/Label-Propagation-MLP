@@ -102,7 +102,7 @@ class graph():
         W = np.zeros((n, n))
         for e in range(self.edges):
             i, j = self.edge_list[e]
-            W[(i,j)] = W2 @ reLu(W1 @ self.X[e] + b1) + (b2 if b2 > 0 else 0)
+            W[(i,j)] = abs(W2 @ reLu(W1 @ self.X[e] + b1) + b2)
             W[(j,i)] = W[(i,j)]
 
         # Gera label inicial para alguns
@@ -124,6 +124,9 @@ class graph():
                 break
 
         # Guarda Rótulos
-        self.Y0 = np.concatenate((y_hat[0:(self.n_lab + self.n_train -1)], np.zeros(self.n_unlab)))
+        self.y_hat = y_hat
+        self.y_hat_not_real = [-1 if x < 0 else (1 if x > 0 else 0) for x in self.y_hat]
 
-        self.Y0_bin = [-1 if x < 0 else (1 if x > 0 else 0) for x in self.Y0]
+        self.y_real = np.concatenate((y_hat[0:(self.n_lab + self.n_train)], np.zeros(self.n_unlab)))
+
+        self.y = [-1 if x < 0 else (1 if x > 0 else 0) for x in self.y_real]
