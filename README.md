@@ -28,3 +28,21 @@ Gerar rótulos | :+1:
 Função de avaliar a acurácia | :x:
 Função do SGD (ou só GD mesmo) | :x:
 Checar se ta tudo ok no arquivo do murai | :x:
+
+### 23/04 a 30/04
+
+Tarefa | Status
+--- | ---
+Testar o método que gera os rótulos | :+1:
+Testar o método com peso 1 | :+1:
+Função de avaliar a acurácia | :x:
+Função do SGD (ou só GD mesmo) | :x:
+Checar se ta tudo ok no arquivo do murai | :x:
+
+### 23/04 a 30/04
+
+Tarefa | Status
+--- | ---
+Função de avaliar a acurácia | :x:
+Função do SGD (ou só GD mesmo) | :x:
+Checar se ta tudo ok no arquivo do murai | :x:

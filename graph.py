@@ -5,11 +5,8 @@ from matplotlib.animation import FuncAnimation
 import networkx as nx
 
 class graph():
-    """
-    Classe que gera grafos.
-    """
 
-    def __init__(self, n_lab=100, n_train=100, n_unlab=500, n_feat=100):
+    def __init__(self, n_lab=10, n_train=10, n_unlab=50, n_feat=10):
         """
         Inicializa a classe
         :param n_lab: número de vértices com rótulo conhecido
@@ -20,22 +17,15 @@ class graph():
 
         # Guarda os valores
         self.vertices = n_lab + n_train + n_unlab
-        self.n_lab = n_lab
-        self.n_train = n_train
-        self.n_unlab = n_unlab
-        self.n_feat = n_feat
+        self.n_lab, self.n_train = n_lab, n_train
+        self.n_unlab, self.n_feat = n_unlab, n_feat
 
-        # Cria matrix e atualiza a matriz A
+        # Cria grafo e rótulos
         self.create_edges()
-        for i in range(n_lab):
-            self.A[(i,i)] += 1
-        
-        # Cria as features das arestas
         self.X = np.random.normal(size=(self.edges, self.n_feat))
-
-        # Faz a chamada da criação dos rótulos
         self.create_labels()
-        self.pos = 0
+
+
 
     def create_edges(self):
         """
@@ -44,41 +34,40 @@ class graph():
         n = self.vertices
         
         # Cria matriz de adjacência
-        #v = np.random.randint(0, 2, n*(n-1)//2)
         v = np.random.binomial(1, 0.1, n*(n-1)//2)
         self.adj = np.zeros((n,n), dtype=int)
         self.adj[np.tril_indices(self.adj.shape[0],-1)] = v
         self.adj = np.transpose(self.adj)
         self.adj[np.tril_indices(self.adj.shape[0],-1)] = v
 
-        # Checa se existe algum vértice isolado
+        # "Conserta" os vértices isolados
         for i in range(n):
             if np.sum(self.adj[i]) == 0:
 
-                # Cria uma aresta aleatória nova
-                j = i
+                j = np.random.randint(0, n)
                 while j == i:
                     j = np.random.randint(0, n)
                 
-                self.adj[(i, j)] = 1
-                self.adj[(j, i)] = 1
+                self.adj[(i, j)] = self.adj[(j, i)] = 1
                 
-        ##### PRECISA DA MATRIZ DE ADJACÊNCIA????
-
-        # Cria matriz A
-        self.D = np.array([sum(self.adj[i]) for i in range(n)])
-        self.A = np.zeros((n,n), dtype=int)
-        for i in range(n):
-            self.A[(i,i)] = self.D[i]
-
-        # Inverte a matriz 
-        self.invA = np.linalg.inv(self.A)
+        # Cria matriz invA
+        D = np.sum(self.adj, 0)
+        n_known = self.n_lab + self.n_train
+        A = np.diag(np.concatenate(
+            (np.ones(n_known), np.zeros(n-n_known)))+D)
+        self.invA = np.linalg.inv(A)
 
         # Guarda as arestas 
         self.edges = int (np.sum(self.adj) / 2)
         self.edge_list = [(i, j) for i in range(n)
                                  for j in range(n)
                                  if self.adj[(i,j)] and j > i]
+
+        
+        
+    def delimiter(x):
+        return list(map(lambda y: (y>0)-(y<0), x))
+
 
 
     def create_labels(self):
@@ -109,6 +98,11 @@ class graph():
             i, j = self.edge_list[e]
             W[(i,j)] = abs(W2 @ reLu(W1 @ self.X[e] + b1) + b2)
             W[(j,i)] = W[(i,j)]
+        
+
+        # DELETE THIS
+        #W = self.adj
+
 
         # Gera label inicial para alguns
         n_known = int(n / 2)
@@ -118,7 +112,8 @@ class graph():
 
         # Matriz A
         D = np.sum(W,0) 
-        A = np.diag(np.concatenate((np.ones(n_known), np.zeros(n-n_known))) + D)
+        A = np.diag(np.concatenate(
+            (np.ones(n_known), np.zeros(n-n_known))) + D)
 
         self.hist = [y_hat]
 
@@ -132,48 +127,46 @@ class graph():
                 break
 
         # Guarda Rótulos
-        delimiter = lambda y: [-1 if x < 0 else (1 if x > 0 else 0) for x in y]
-        self.y_hat = y_hat
-        self.y_hat_not_real = delimiter(self.y_hat)
+        self.y_hat_real = y_hat
+        self.y_hat = delimiter(self.y_hat_real)
 
-        self.y_real = np.concatenate((y_hat[0:(self.n_lab + self.n_train)], np.zeros(self.n_unlab)))
+        self.y_real = np.concatenate(
+            (y_hat[0:(self.n_lab+self.n_train)],np.zeros(self.n_unlab)))
 
         self.y = delimiter(self.y_real)
 
 
-    def animate_convergence(self, delimiter=False, save=False, name="teste.gif"):
+
+    def animate_convergence(self,real=True,save=False,name="vid.mp4"):
         """
         Cria uma animação do algoritmo de label propagation
         """
 
         # Cria grafo
         H = nx.from_numpy_matrix(self.adj)
-        
-        # Checa se pos já foi calculada antes
-        if self.pos == 0:
-            self.pos = nx.spring_layout(H)
+        pos = nx.spring_layout(H)
+        vertices = nx.draw_networkx_nodes(
+            H, self.pos, node_color=self.hist[0])
 
         # Cria figura
         fig = plt.figure()
         ax = fig.add_subplot(111)
         plt.axis('off')
 
-        # Guarda posições dos vértices e arestas
-        vertices = nx.draw_networkx_nodes(H, self.pos, node_color=self.hist[0])
-        arestas = nx.draw_networkx_edges(H, self.pos) 
-
         # Função que atualiza o plot
         def update(n):
-            iter = self.hist[n]
-            if delimiter:
-                iter = np.array([-1 if x < 0 else (1 if x > 0 else 0) for x in iter])
-            vertices.set_array(iter)
+            y_hat = self.hist[n]
+            if not real: y_hat = np.array(delimiter(y_hat))
+
+            vertices.set_array(y_hat)
             ax.set_title("Iteração: {}".format(n), loc='left')
-    
+
             return vertices,
         
         # Chama animação
-        anim = FuncAnimation(fig, update, blit=False, interval=500, frames=len(self.hist))
+        anim = FuncAnimation(
+            fig, update, blit=False, interval=500, frames=len(
+                self.hist))
         
         # Salva ou exibe
         if save:
