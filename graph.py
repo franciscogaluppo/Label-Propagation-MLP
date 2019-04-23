@@ -65,8 +65,8 @@ class graph():
 
         
         
-    def delimiter(x):
-        return list(map(lambda y: (y>0)-(y<0), x))
+    def delimiter(self, x):
+        return list(map(lambda y: 1*(y>0)-1*(y<0), x))
 
 
 
@@ -101,7 +101,7 @@ class graph():
         
 
         # DELETE THIS
-        #W = self.adj
+        W = self.adj
 
 
         # Gera label inicial para alguns
@@ -128,12 +128,11 @@ class graph():
 
         # Guarda Rótulos
         self.y_hat_real = y_hat
-        self.y_hat = delimiter(self.y_hat_real)
+        self.y_hat = self.delimiter(y_hat)
 
         self.y_real = np.concatenate(
             (y_hat[0:(self.n_lab+self.n_train)],np.zeros(self.n_unlab)))
-
-        self.y = delimiter(self.y_real)
+        self.y = self.delimiter(self.y_real)
 
 
 
@@ -142,21 +141,22 @@ class graph():
         Cria uma animação do algoritmo de label propagation
         """
 
-        # Cria grafo
-        H = nx.from_numpy_matrix(self.adj)
-        pos = nx.spring_layout(H)
-        vertices = nx.draw_networkx_nodes(
-            H, self.pos, node_color=self.hist[0])
-
         # Cria figura
         fig = plt.figure()
         ax = fig.add_subplot(111)
         plt.axis('off')
 
+        # Cria grafo
+        H = nx.from_numpy_matrix(self.adj)
+        pos = nx.spring_layout(H)
+        vertices = nx.draw_networkx_nodes(
+            H, pos, node_color=self.hist[0])
+        arestas = nx.draw_networkx_edges(H, pos)
+
         # Função que atualiza o plot
         def update(n):
             y_hat = self.hist[n]
-            if not real: y_hat = np.array(delimiter(y_hat))
+            if not real: y_hat = np.array(self.delimiter(y_hat))
 
             vertices.set_array(y_hat)
             ax.set_title("Iteração: {}".format(n), loc='left')
