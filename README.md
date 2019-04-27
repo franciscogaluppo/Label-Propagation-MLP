@@ -44,5 +44,6 @@ Checar se ta tudo ok no arquivo do murai | :x:
 Tarefa | Status
 --- | ---
 Função de avaliar a acurácia | :x:
-Função do SGD (ou só GD mesmo) | :x:
-Checar se ta tudo ok no arquivo do murai | :x:
+Função do SGD (ou só GD mesmo) | :+1:
+Checar se ta tudo ok no arquivo do murai | :+1:
+Rodar o programa | :+1:

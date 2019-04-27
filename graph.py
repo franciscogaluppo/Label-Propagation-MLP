@@ -50,13 +50,6 @@ class graph():
                 
                 self.adj[(i, j)] = self.adj[(j, i)] = 1
                 
-        # Cria matriz invA
-        D = np.sum(self.adj, 0)
-        n_known = self.n_lab + self.n_train
-        A = np.diag(np.concatenate(
-            (np.ones(n_known), np.zeros(n-n_known)))+D)
-        self.invA = np.linalg.inv(A)
-
         # Guarda as arestas 
         self.edges = int (np.sum(self.adj) / 2)
         self.edge_list = [(i, j) for i in range(n)
@@ -100,12 +93,11 @@ class graph():
             W[(j,i)] = W[(i,j)]
         
 
-        # DELETE THIS
-        W = self.adj
-
+        # TODO: DELETE THIS
+        #W = self.adj
 
         # Gera label inicial para alguns
-        n_known = int(n / 2)
+        n_known = int(n / 10)
         known = (-1)**np.random.randint(0,2,n_known)
         y0 = np.concatenate(((known), np.zeros(n-n_known)))
         y_hat = copy(y0)
@@ -127,12 +119,13 @@ class graph():
                 break
 
         # Guarda Rótulos
-        self.y_hat_real = y_hat
-        self.y_hat = self.delimiter(y_hat)
-
-        self.y_real = np.concatenate(
+        Ytrain = np.concatenate(
             (y_hat[0:(self.n_lab+self.n_train)],np.zeros(self.n_unlab)))
-        self.y = self.delimiter(self.y_real)
+        self.Ytrain = self.delimiter(Ytrain)[self.n_lab:]
+
+        Y0 = np.concatenate(
+            (y_hat[0:(self.n_lab)],np.zeros(self.n_unlab+self.n_train)))
+        self.Y0 = self.delimiter(Y0)
 
 
 
