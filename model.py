@@ -10,24 +10,22 @@ def sgd(theta, lr):
         param[:] = param - lr * param.grad
 
 
-def weight_matrix(n, X, edge_list, theta):
+# TODO: parmetros
+def weight_matrix(n, feats, adj, theta):
     """
     Calcula os pesos das arestas com base nas features
-    :param X: As features de cada aresta
-    :param edge_list: As arestas
+    :param n:
+    :param feats: As features de cada par de vértices
+    :param adj: 
     :param theta: Os parametros do modelo
     """
     
     reLu = lambda x: nd.maximum(x, 0)
-    nd_abs = lambda b: b*((b>0)-(b<0))
-    W = nd.zeros((n, n))
 
-    # Calcula peso de wij
-    for e in range(len(edge_list)):
-        i, j = edge_list[e]
-        W[(i,j)] = nd.dot(theta[2], reLu(
-            nd.dot(theta[0], nd.array(X[e])) + theta[1])) + theta[3]
-        W[(j,i)] = W[(i,j)]
+    # Calcula pesos
+    adj = nd.reshape(nd.array(adj), shape=(n*n))
+    W = nd.sparse.abs(nd.reshape((nd.dot(theta[2],reLu(
+        nd.dot(theta[0], nd.array(feats)) + theta[1])) + theta[3])*adj, shape=(n,n)))
 
     return W
 
@@ -52,7 +50,7 @@ def train(G, loss, epochs, theta, lr):
         
         # Calcula erro
         with autograd.record():
-            W = weight_matrix(G.vertices, G.X, G.edge_list, theta)
+            W = weight_matrix(G.vertices, G.feats, G.adj, theta)
             D = nd.sum(W, 0)
             invA = nd.diag(1/(I+D))
             
@@ -72,7 +70,7 @@ def train(G, loss, epochs, theta, lr):
         Y = Y.astype('float32')
         train_l_sum = l.asscalar()
         train_acc_sum = (
-            (-1+2*(Y>0))[G.n_lab:][:G.n_train] == G.Ytrain[:G.n_train]).sum()
+            (-1+2*(Y>0))[G.n_lab:][:G.n_train] == nd.array(G.Ytrain[:G.n_train])).sum().asscalar()
 
         #TODO: test_acc = evaluate_accuracy(test_iter) 
         

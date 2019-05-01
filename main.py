@@ -6,7 +6,7 @@ import graph
 import model
 
 # Cria um grafo exemplo
-n_lab, n_train, n_unlab, n_feat = 10, 50, 340, 30
+n_lab, n_train, n_unlab, n_feat = 100, 500, 3400, 30
 G = graph.graph(n_lab, n_train, n_unlab, n_feat)
 
 
@@ -14,7 +14,7 @@ G = graph.graph(n_lab, n_train, n_unlab, n_feat)
 n_outputs, n_hiddens = 1, 30
 
 W1 = nd.random.normal(scale=0.01, shape=(n_hiddens, n_feat))
-b1 = nd.zeros(n_hiddens)
+b1 = nd.zeros((n_hiddens, 1))
 
 W2 = nd.random.normal(scale=0.01, shape=(n_outputs, n_hiddens))
 b2 = nd.zeros(n_outputs)

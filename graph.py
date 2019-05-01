@@ -25,6 +25,12 @@ class graph():
         self.X = np.random.normal(size=(self.edges, self.n_feat))
         self.create_labels()
 
+        # TODO: ARRUMAR
+        feats = np.zeros((self.vertices**2, n_feat))
+        for e in range(self.edges):
+            i, j = self.edge_list[e]
+            feats[i*self.vertices+j]= feats[j*self.vertices+i] = self.X[e]
+        self.feats = feats.T
 
 
     def create_edges(self):

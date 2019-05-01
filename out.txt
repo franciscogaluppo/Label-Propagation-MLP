@@ -1,0 +1,2 @@
+epoch 1, loss 0.4192, train acc 1.000
+epoch 2, loss 0.0610, train acc 1.000
