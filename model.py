@@ -2,7 +2,7 @@ from mxnet import autograd, nd
 
 def sgd(theta, lr):
     """
-    Stochastic gradient descent.
+    Gradient descent.
     :param theta: Os parametros do modelo
     :param lr: Taxa de aprendizado
     """
@@ -10,13 +10,12 @@ def sgd(theta, lr):
         param[:] = param - lr * param.grad
 
 
-# TODO: parmetros
 def weight_matrix(n, feats, adj, theta):
     """
     Calcula os pesos das arestas com base nas features
-    :param n:
+    :param n: Número de vértices
     :param feats: As features de cada par de vértices
-    :param adj: 
+    :param adj: Matriz de adjacência do grafo
     :param theta: Os parametros do modelo
     """
     

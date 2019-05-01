@@ -6,7 +6,7 @@ import graph
 import model
 
 # Cria um grafo exemplo
-n_lab, n_train, n_unlab, n_feat = 100, 500, 3400, 30
+n_lab, n_train, n_unlab, n_feat = 20, 100, 680, 30
 G = graph.graph(n_lab, n_train, n_unlab, n_feat)
 
 

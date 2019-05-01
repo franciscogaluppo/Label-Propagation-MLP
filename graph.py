@@ -4,9 +4,14 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import networkx as nx
 
+def delimiter(x):
+    return list(map(lambda y: 1*(y>0)-1*(y<0), x))
+
+
+
 class graph():
 
-    def __init__(self, n_lab=10, n_train=10, n_unlab=50, n_feat=10):
+    def __init__(self, n_lab=10, n_train=10, n_unlab=50, n_feat=10, p=.1):
         """
         Inicializa a classe
         :param n_lab: número de vértices com rótulo conhecido
@@ -21,26 +26,19 @@ class graph():
         self.n_unlab, self.n_feat = n_unlab, n_feat
 
         # Cria grafo e rótulos
-        self.create_edges()
-        self.X = np.random.normal(size=(self.edges, self.n_feat))
+        self.create_edges(p)
+        self.create_features()
         self.create_labels()
 
-        # TODO: ARRUMAR
-        feats = np.zeros((self.vertices**2, n_feat))
-        for e in range(self.edges):
-            i, j = self.edge_list[e]
-            feats[i*self.vertices+j]= feats[j*self.vertices+i] = self.X[e]
-        self.feats = feats.T
 
-
-    def create_edges(self):
+    def create_edges(self, p):
         """
         Cria a matriz de adjacência, matriz A e lista de arestas.
         """
         n = self.vertices
         
         # Cria matriz de adjacência
-        v = np.random.binomial(1, 0.1, n*(n-1)//2)
+        v = np.random.binomial(1, p, n*(n-1)//2)
         self.adj = np.zeros((n,n), dtype=int)
         self.adj[np.tril_indices(self.adj.shape[0],-1)] = v
         self.adj = np.transpose(self.adj)
@@ -62,10 +60,22 @@ class graph():
                                  for j in range(n)
                                  if self.adj[(i,j)] and j > i]
 
+
+    def create_features(self):
+        """
+        Cria as features para todo par de vértices.
+        A feature é de zeros quando não existe tal aresta.
+        """
         
-        
-    def delimiter(self, x):
-        return list(map(lambda y: 1*(y>0)-1*(y<0), x))
+        n = self.vertices
+
+        # Cria features e as coloca no formato padrão
+        X = np.random.normal(size=(self.edges, self.n_feat))
+        feats = np.zeros((n*n, self.n_feat))
+        for e in range(self.edges):
+            i, j = self.edge_list[e]
+            feats[i*n+j]= feats[j*n+i] = X[e]
+        self.feats = feats.T
 
 
 
@@ -83,24 +93,18 @@ class graph():
 
         # Matrizes ocultas
         W1 = np.random.normal(size=(n_hidden, self.n_feat))
-        W2 = np.random.normal(size=n_hidden)
+        W2 = np.random.normal(size=(n_hidden))
 
-        b1 = np.random.normal(size=n_hidden)
+        b1 = np.random.normal(size=(n_hidden, 1))
         b2 = np.random.normal()
 
         # Rectifier
         reLu = lambda x: np.maximum(x, 0, x)
 
         # Cria os pesos
-        W = np.zeros((n, n))
-        for e in range(self.edges):
-            i, j = self.edge_list[e]
-            W[(i,j)] = abs(W2 @ reLu(W1 @ self.X[e] + b1) + b2)
-            W[(j,i)] = W[(i,j)]
-        
-
-        # TODO: DELETE THIS
-        #W = self.adj
+        adj = np.reshape(self.adj, newshape=(n*n))
+        W = np.abs(np.reshape((W2 @ reLu(
+            W1 @ self.feats + b1) + b2)*adj, newshape=(n,n)))
 
         # Gera label inicial para alguns
         n_known = int(n / 10)
@@ -127,11 +131,11 @@ class graph():
         # Guarda Rótulos
         Ytrain = np.concatenate(
             (y_hat[0:(self.n_lab+self.n_train)],np.zeros(self.n_unlab)))
-        self.Ytrain = self.delimiter(Ytrain)[self.n_lab:]
+        self.Ytrain = delimiter(Ytrain)[self.n_lab:]
 
         Y0 = np.concatenate(
             (y_hat[0:(self.n_lab)],np.zeros(self.n_unlab+self.n_train)))
-        self.Y0 = self.delimiter(Y0)
+        self.Y0 = delimiter(Y0)
 
 
 
@@ -155,7 +159,7 @@ class graph():
         # Função que atualiza o plot
         def update(n):
             y_hat = self.hist[n]
-            if not real: y_hat = np.array(self.delimiter(y_hat))
+            if not real: y_hat = np.array(delimiter(y_hat))
 
             vertices.set_array(y_hat)
             ax.set_title("Iteração: {}".format(n), loc='left')
