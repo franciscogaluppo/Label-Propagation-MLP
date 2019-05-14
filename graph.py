@@ -74,7 +74,7 @@ class graph():
         feats = np.zeros((n*n, self.n_feat))
         for e in range(self.edges):
             i, j = self.edge_list[e]
-            feats[i*n+j]= feats[j*n+i] = X[e]
+            feats[i*n+j] = feats[j*n+i] = X[e]
         self.feats = feats.T
 
 
@@ -88,6 +88,9 @@ class graph():
         
         n = self.vertices
 
+        # Rectifier
+        reLu = lambda x: np.maximum(x, 0, x)
+
         # Número oculto
         n_hidden = 30
 
@@ -98,44 +101,39 @@ class graph():
         b1 = np.random.normal(size=(n_hidden, 1))
         b2 = np.random.normal()
 
-        # Rectifier
-        reLu = lambda x: np.maximum(x, 0, x)
-
-        # Cria os pesos
-        adj = np.reshape(self.adj, newshape=(n*n))
-        W = np.abs(np.reshape((W2 @ reLu(
-            W1 @ self.feats + b1) + b2)*adj, newshape=(n,n)))
-
         # Gera label inicial para alguns
-        n_known = int(n / 10)
-        known = (-1)**np.random.randint(0,2,n_known)
-        y0 = np.concatenate(((known), np.zeros(n-n_known)))
-        y_hat = copy(y0)
+        l = int(n / 5)
+        k = n - l
+        Yl = (-1)**np.random.randint(0,2,l)
+
+        # Cria os pesos das arestas dos demais
+        adj = np.reshape(self.adj[l:,], newshape=(n*k))
+        unknown = self.feats[:,(n*l):]
+        temp = reLu(W1 @ unknown + b1)
+        temp = np.reshape(((W2 @ temp)+b2) * adj, newshape=(k,n))
+        W = 1/(1 + np.exp(-temp))
 
         # Matriz A
-        D = np.sum(W,0) 
-        A = np.diag(np.concatenate(
-            (np.ones(n_known), np.zeros(n-n_known))) + D)
+        D = np.sum(W,1) 
+        invA = np.diag(1/D)
 
-        self.hist = [y_hat]
+        prevY = np.zeros(k)
+        self.hist = [np.concatenate((Yl, prevY))]
 
         # Itera para convergir
         for iter in range(100):
-            y_hat_old = y_hat
-            y_hat = np.linalg.solve(A, np.dot(W, y_hat) + y0)
-            self.hist.append(y_hat)
+            Y = invA @ (W @ np.concatenate((Yl, prevY)))
+            self.hist.append(np.concatenate((Yl, Y)))
 
-            if np.linalg.norm(y_hat - y_hat_old) < 0.01:
+            if np.linalg.norm(Y - prevY) < 0.01:
                 break
+            
+            prevY = Y
 
         # Guarda Rótulos
-        Ytrain = np.concatenate(
-            (y_hat[0:(self.n_lab+self.n_train)],np.zeros(self.n_unlab)))
-        self.Ytrain = delimiter(Ytrain)[self.n_lab:]
-
-        Y0 = np.concatenate(
-            (y_hat[0:(self.n_lab)],np.zeros(self.n_unlab+self.n_train)))
-        self.Y0 = delimiter(Y0)
+        Ytrain = np.concatenate((Y[:self.n_train],np.zeros(self.n_unlab)))
+        self.Ytrain = delimiter(Ytrain)
+        self.Yl = delimiter(np.concatenate((Yl, Y))[:(self.n_lab)])
 
 
 

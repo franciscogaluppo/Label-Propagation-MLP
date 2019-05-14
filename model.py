@@ -10,21 +10,23 @@ def sgd(theta, lr):
         param[:] = param - lr * param.grad
 
 
-def weight_matrix(n, feats, adj, theta):
+def weight_matrix(n, l, feats, adj, theta):
     """
     Calcula os pesos das arestas com base nas features
     :param n: Número de vértices
-    :param feats: As features de cada par de vértices
+    :param l: Número de rótulos conhecidos
+    :param feats: As features de cada (a, b), rótulo de a desconhecido
     :param adj: Matriz de adjacência do grafo
     :param theta: Os parametros do modelo
     """
     
-    reLu = lambda x: nd.maximum(x, 0)
-
+    k = n-l
+    adj = nd.reshape(nd.array(adj[n*l:,]), shape=(k*n))
+    
     # Calcula pesos
-    adj = nd.reshape(nd.array(adj), shape=(n*n))
-    W = nd.sparse.abs(nd.reshape((nd.dot(theta[2],reLu(
-        nd.dot(theta[0], nd.array(feats)) + theta[1])) + theta[3])*adj, shape=(n,n)))
+    temp = nd.relu(nd.dot(theta[0], nd.array(feats[:,(n*l):])) + theta[1])
+    temp = nd.reshape((nd.dot(theta[2],temp) + theta[3])*adj,shape=(k,n))
+    W = 1/(1 + nd.exp(-temp))
 
     return W
 
@@ -40,26 +42,27 @@ def train(G, loss, epochs, theta, lr):
     """
     
     for epoch in range(epochs): 
-        Y0 = nd.array(G.Y0)
+        Yl = nd.array(G.Yl).reshape(G.n_lab, 1)
         Ytrain = nd.array(G.Ytrain)
-        I = nd.concat(nd.ones(G.n_lab), nd.zeros(len(Y0) - G.n_lab),dim=0)
         
-        prevY = Y0
+        prevY = nd.zeros((G.vertices - G.n_lab, 1))
         converged = False
         
         # Calcula erro
         with autograd.record():
-            W = weight_matrix(G.vertices, G.feats, G.adj, theta)
-            D = nd.sum(W, 0)
-            invA = nd.diag(1/(I+D))
-            
-            while not converged:
-                Y = nd.dot(invA, (nd.dot(W, prevY) + Y0))
+            W = weight_matrix(G.vertices, G.n_lab, G.feats, G.adj, theta)
+            D = nd.sum(W, 1)
+            invA = nd.diag(1/D)
 
+            while not converged:
+                Y = nd.dot(invA, nd.dot(W, nd.concat(Yl, prevY, dim=0)))
+
+                print(D)
                 if nd.norm(prevY-Y) < 0.01:
                     converged = True
                 prevY = Y
-            l = loss(Y[G.n_lab:], Ytrain).sum()
+
+            l = loss(Y, Ytrain).sum()
         
         # Atualiza autograds
         l.backward()
