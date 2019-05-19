@@ -3,16 +3,23 @@ from copy import copy
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import networkx as nx
+from pprint import pprint
 
-# Funções auxiliares
-deli = lambda x: 1*(x>0) - 1*(x<0)
-sigm = lambda x: 1. / (1. + np.exp(-x))
+def delimiter(x):
+    return list(map(lambda y: 1*(y>0)-1*(y<0), x))
+    #return x
+
+# Rectifier
 reLu = lambda x: np.maximum(x, 0, x)
 
+# sigmoid
+@np.vectorize
+def sigmoid(x):
+    return 1. / (1. + np.exp(-x))
 
 class graph():
 
-    def __init__(self, n_lab=10, n_train=10, n_unlab=50, n_feat=10, p=.1, method=1):
+    def __init__(self, n_lab=10, n_train=10, n_unlab=50, n_feat=10, p=.1):
         """
         Inicializa a classe
         :param n_lab: número de vértices com rótulo conhecido
@@ -30,7 +37,7 @@ class graph():
         np.random.seed(3)
         self.create_edges(p)
         self.create_features()
-        self.create_labels(method)
+        self.create_labels()
 
 
     def create_edges(self, p):
@@ -76,12 +83,12 @@ class graph():
         feats = np.zeros((n*n, self.n_feat))
         for e in range(self.edges):
             i, j = self.edge_list[e]
-            feats[i*n+j] = feats[j*n+i] = X[e]
+            feats[i*n+j]= feats[j*n+i] = X[e]
         self.feats = feats.T
 
 
 
-    def create_labels(self, method):
+    def create_labels(self):
         """
         Cria os rótulos para n_lab + n_train vértices.
         Designa alguns rótulos aleatoriamente e propaga.
@@ -91,60 +98,70 @@ class graph():
         n = self.vertices
 
         # Número oculto
-        n_hidden = 30
+        n_hidden = 2
 
         # Matrizes ocultas
-        W1 = np.random.normal(size=(n_hidden, self.n_feat))
-        W2 = np.random.normal(size=(n_hidden))
+        # W1 = np.random.normal(size=(n_hidden, self.n_feat))
+        # W2 = np.random.normal(size=(1,n_hidden))
 
-        b1 = np.random.normal(size=(n_hidden, 1))
-        b2 = np.random.normal()
+        # b1 = np.random.normal(size=(n_hidden, 1))
+        # b2 = np.random.normal()
+
+        # W = np.reshape(sigmoid(W2 @ np.tanh(
+        #     W1 @ self.feats + b1) + b2)*adj, newshape=(n,n))
+
+        W1 = np.random.normal(size=(1, self.n_feat))
+        b1 = np.random.normal(size=(1, 1))
+        print('W1:',W1)
+        print('b1:',b1)
+
+        # Cria os pesos
+        adj = np.reshape(self.adj, newshape=(n*n))
+        W = np.reshape(sigmoid(W1 @ self.feats + b1)*adj, newshape=(n,n))
+        np.set_printoptions(precision=2) 
+        #print('graph W:')
+        #print(W)
 
         # Gera label inicial para alguns
-        l = n // 10
-        k = n - l
-        Ylabel = (-1)**np.random.randint(0,2,l)
-
-        # Cria os pesos das arestas dos demais
-        adj = np.reshape(self.adj[l:,], newshape=(n*k))
-
-        if method == 1:
-            unknown = self.feats[:,(n*l):]
-            W = sigm(W2 @ (reLu(W1 @ unknown + b1)) + b2) * adj
-            W.shape = (k,n)
-
-        elif method == 2:
-            unknown = self.feats[:,(n*l):]
-            W = sigm(W1 @ unknown + b1) * adj
-            W.shape = (k,n)
+        n_known = self.n_lab
+        known = (-1)**np.random.randint(0,2,n_known)
+        print('known:', known)
+        y0 = np.concatenate((known, np.zeros(n-n_known)))
+        y_hat = y0.copy()
 
         # Matriz A
-        #TODO: alterar a multiplcação da A
-        D = np.sum(W,1) 
-        invA = np.diag(1/D)
+        D = np.sum(W,0)
+        invA = np.diag(1./D)
 
-        prevY = np.zeros(k)
-        self.hist = [np.concatenate((Ylabel, prevY))]
+        self.hist = [y_hat]
 
         # Itera para convergir
         for iter in range(100):
-            concat = np.concatenate((Ylabel, prevY))
-            Y = invA @ (W @ concat)
-            self.hist.append(concat)
+            y_hat_old = y_hat
+            y_hat = invA @ (np.dot(W, y_hat))
+            y_hat[:n_known] = known
+            self.hist.append(y_hat)
 
-            if np.linalg.norm(Y - prevY) < 0.01:
+            if np.linalg.norm(y_hat[n_known:] - y_hat_old[n_known:]) < 0.01:
                 break
-            
-            prevY = Y
-        
+
+        # define rótulos
+        print('weight matrix:')
+        pprint(1./np.sum(W,axis=1,keepdims=True)*W)
+        print('total iter:', iter)
+        print('(soft) y_hat:',y_hat)
+        y_hat = delimiter(y_hat)
+        print('(hard) y_hat:',y_hat)
+
         # Guarda Rótulos
-        labels = deli(np.concatenate((Ylabel, Y)))
-        self.Ylabel = labels[:self.n_lab] 
-        self.Ytarget = np.concatenate(
-            (labels[self.n_lab:(self.n_train+self.n_lab)], np.zeros(self.n_unlab))) 
-        
-        # PODE ISSO?
-        self.Ytest = labels[-self.n_unlab:]
+        Ytrain = y_hat[self.n_lab:self.n_lab+self.n_train]
+        self.Ytrain = delimiter(Ytrain)
+
+        Y0 = np.concatenate(
+            (y_hat[0:(self.n_lab)],np.zeros(self.n_train+self.n_unlab)))
+        self.Y0 = delimiter(Y0)
+
+        self.Ytest = delimiter(y_hat[self.n_lab+self.n_train:])
 
 
 
@@ -162,13 +179,13 @@ class graph():
         H = nx.from_numpy_matrix(self.adj)
         pos = nx.spring_layout(H)
         vertices = nx.draw_networkx_nodes(
-            H, pos, node_color=self.hist[0])
+            H, pos, node_color=self.hist[0], node_size=50)
         arestas = nx.draw_networkx_edges(H, pos)
 
         # Função que atualiza o plot
         def update(n):
             y_hat = self.hist[n]
-            if not real: y_hat = np.array(deli(y_hat))
+            if not real: y_hat = np.array(delimiter(y_hat))
 
             vertices.set_array(y_hat)
             ax.set_title("Iteração: {}".format(n), loc='left')

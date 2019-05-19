@@ -12,9 +12,15 @@ G = graph.graph(n_lab, n_train, n_unlab, n_feat)
 
 # Parametros do modelo
 n_outputs, n_hiddens = 1, 30
+method = 1
 
-W1 = nd.random.normal(scale=0.01, shape=(n_hiddens, n_feat))
-b1 = nd.zeros((n_hiddens, 1))
+if method == 1:
+    W1 = nd.random.normal(scale=0.01, shape=(n_hiddens, n_feat))
+    b1 = nd.zeros((n_hiddens, 1))
+
+elif method == 2:
+    W1 = nd.random.normal(scale=0.01, shape=(1, n_feat))
+    b1 = nd.zeros((1, 1))
 
 W2 = nd.random.normal(scale=0.01, shape=(n_outputs, n_hiddens))
 b2 = nd.zeros(n_outputs)
