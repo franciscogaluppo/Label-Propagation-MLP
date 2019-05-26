@@ -13,36 +13,63 @@ def sgd(theta, lr):
         param[:] = param - lr * param.grad
 
 
-def weight_matrix(n, l, feats, adj, theta, method=1):
+def weight_matrix(G, theta, method):
     """
     Calcula os pesos das arestas com base nas features
-    :param n: Número de vértices
-    :param l: Número de rótulos conhecidos
-    :param feats: As features de cada (a, b), rótulo de a desconhecido
-    :param adj: Matriz de adjacência do grafo
+    :param G: Grafo de entrada
     :param theta: Os parametros do modelo
     :param method: O método para cáluclo dos pesos
+    :return: Matriz de pesos das arestas
     """
-    
+    n = G.vertices
+    l = G.n_lab
     k = n-l
-    adj = nd.reshape(nd.array(adj[-k:,]), shape=(k*n, 1))
-    known = nd.array(feats[:,-k*n:])
+
+    adj = nd.reshape(nd.array(G.adj[-k:,]), shape=(k*n, 1))
+    known = nd.array(G.feats[:,-k*n:])
     
     # Calcula pesos
     if method == 1:
+        temp = nd.transpose(nd.dot(theta[0], known) + theta[1])
+        W = nd.reshape(sigm(temp) * adj, shape=(k,n))
+
+    elif method == 2:
         temp = nd.relu(nd.dot(theta[0], known) + theta[1])
         temp = nd.transpose(sigm(nd.dot(theta[2], temp) + theta[3])) * adj
         W = nd.reshape(temp, shape=(k,n))
 
-    # TODO: arrumar as dimensões
-    elif method == 2:
-        temp = nd.dot(theta[0], known) + theta[1] 
-        W = nd.reshape(sigm(temp) * adj, shape=(k,n))
-
     return W
 
 
-def train(G, loss, epochs, theta, lr, verbose=True):
+def get_params(G, method):
+    """
+    Get the params for the model.
+    :param G: Grafo de entrada
+    :param method: metodo do modelo
+    :return: retorna lista de parametros do modelo
+    """
+    
+    n_outputs, n_hiddens = 1, 30
+
+    if method == 1:
+        W1 = nd.random.normal(scale=0.01, shape=(1, G.n_feat))
+        b1 = nd.zeros((1, 1))
+        params = [W1, b1]
+
+    elif method == 2:
+        W1 = nd.random.normal(scale=0.01, shape=(n_hiddens, G.n_feat))
+        b1 = nd.zeros((n_hiddens, 1))
+        W2 = nd.random.normal(scale=0.01, shape=(n_outputs, n_hiddens))
+        b2 = nd.zeros(n_outputs)
+        params = [W1, b1, W2, b2]
+
+    for param in params:
+        param.attach_grad()
+
+    return params
+
+
+def train(G, loss, epochs, theta, lr, method=1, verbose=True):
     """
     Train and evaluate a model with CPU.
     :param G: Objeto graph com todos os dados
@@ -51,18 +78,21 @@ def train(G, loss, epochs, theta, lr, verbose=True):
     :param theta: Parametros do modelo
     :param lr: Taxa de aprendizado
     """
-    # Vetores fixos 
+    # Vetores fixos
+    labels = G.labels
     k = G.vertices - G.n_lab
-    Ylabel = nd.array(G.Ylabel).reshape(G.n_lab, 1)
-    Ytarget = nd.array(G.Ytarget).reshape(k, 1)
-    Ytest = nd.array(G.Ytest).reshape(G.n_unlab, 1)
+    Ylabel = nd.array(G.Ylabel).reshape(G.n_lab, labels)
+    Ytarget = nd.array(G.Ytarget).reshape(G.n_train, labels)
+    Ytest = nd.array(G.Ytest).reshape(G.n_unlab, labels)
+
+    theta = get_params(G, method)
         
     for epoch in range(epochs): 
         prevY = nd.zeros((G.vertices - G.n_lab, 1))
         
         # Calcula erro
         with autograd.record():
-            W = weight_matrix(G.vertices, G.n_lab, G.feats, G.adj, theta)
+            W = weight_matrix(G, theta, method)
             invA = nd.reshape(1/(nd.sum(W, 1))[-k:,], shape=(k,1))
 
             for i in range(100):
@@ -72,7 +102,7 @@ def train(G, loss, epochs, theta, lr, verbose=True):
                     break
                 prevY = Y
 
-            l = loss(Y, Ytarget).sum()
+            l = loss(Y[:G.n_train,:], Ytarget).sum()
         
         # Atualiza autograds
         l.backward()
@@ -84,14 +114,15 @@ def train(G, loss, epochs, theta, lr, verbose=True):
             Yhard = deli(Y)
 
             train_l = l.asscalar() / len(Y)
-            print(Yhard[0], Ytarget[0])
-            train_acc = (Yhard[G.n_train:] == Ytarget[G.n_train:])
-            print(train_acc[0])
-            train_acc = train_acc.sum().asscalar() /  G.n_train
 
-            test_acc = Yhard[-G.n_unlab:] == Ytest
-            test_acc = test_acc.sum().asscalar() / G.n_unlab
+            print(epoch+1, train_l)
 
-            print('epoch {}, loss {:.4f}, train acc {:.3f}, test acc {:.3}'.format(
-            epoch+1, train_l, train_acc, test_acc))
+            #train_acc = (Yhard[:G.n_train] == Ytarget)
+            #train_acc = train_acc.sum().asscalar() /  G.n_train
+
+            #test_acc = Yhard[-G.n_unlab:] == Ytest
+            #test_acc = test_acc.sum().asscalar() / G.n_unlab
+
+            #print('epoch {}, loss {:.4f}, train acc {:.3f}, test acc {:.3}'.format(
+            #epoch+1, train_l, train_acc, test_acc))
 

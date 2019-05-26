@@ -9,10 +9,17 @@ deli = lambda x: 1*(x>0) - 1*(x<0)
 sigm = lambda x: 1. / (1. + np.exp(-x))
 reLu = lambda x: np.maximum(x, 0, x)
 
+class graph:
+    def __str__(self):
+        return "Grafo:\n{} vertices\n{} arestas".format(self.vertices, self.edges)
 
-class graph():
+class real_graph(graph):
+    def __init__(self):
+        raise Exception("Ainda não implementado.")
 
-    def __init__(self, n_lab=10, n_train=10, n_unlab=50, n_feat=10, p=.1, method=1):
+class random_graph(graph):
+
+    def __init__(self, n_lab=10, n_train=10, n_unlab=50, n_feat=10, labels=1, method=1, p=.1):
         """
         Inicializa a classe
         :param n_lab: número de vértices com rótulo conhecido
@@ -25,6 +32,7 @@ class graph():
         self.vertices = n_lab + n_train + n_unlab
         self.n_lab, self.n_train = n_lab, n_train
         self.n_unlab, self.n_feat = n_unlab, n_feat
+        self.labels = labels
 
         # Cria grafo e rótulos
         np.random.seed(3)
@@ -93,43 +101,41 @@ class graph():
         # Número oculto
         n_hidden = 30
 
-        # Matrizes ocultas
-        W1 = np.random.normal(size=(n_hidden, self.n_feat))
-        W2 = np.random.normal(size=(n_hidden))
-
-        b1 = np.random.normal(size=(n_hidden, 1))
-        b2 = np.random.normal()
-
         # Gera label inicial para alguns
         l = n // 10
         k = n - l
-        Ylabel = (-1)**np.random.randint(0,2,l)
+        a = [1]+[0]*(self.labels-1)
+        Ylabel = -(-1)**np.array([list(np.random.permutation(a)) for i in range(l)])
 
         # Cria os pesos das arestas dos demais
         adj = np.reshape(self.adj[l:,], newshape=(n*k))
 
         if method == 1:
+            W1 = np.random.normal(size=(n_hidden, self.n_feat))
+            W2 = np.random.normal(size=(n_hidden))
+            b1 = np.random.normal(size=(n_hidden, 1))
+            b2 = np.random.normal()
+            
             unknown = self.feats[:,(n*l):]
             W = sigm(W2 @ (reLu(W1 @ unknown + b1)) + b2) * adj
             W.shape = (k,n)
 
         elif method == 2:
+            W1 = np.random.normal(size=(1, self.n_feat))
+            b1 = np.random.normal(size=(1, 1))
+
             unknown = self.feats[:,(n*l):]
             W = sigm(W1 @ unknown + b1) * adj
             W.shape = (k,n)
 
-        # Matriz A
-        #TODO: alterar a multiplcação da A
-        D = np.sum(W,1) 
-        invA = np.diag(1/D)
-
-        prevY = np.zeros(k)
+        prevY = np.zeros((k, self.labels))
+        invA = np.array([1/(np.sum(W,1))[-k:,]]).T
         self.hist = [np.concatenate((Ylabel, prevY))]
 
         # Itera para convergir
         for iter in range(100):
             concat = np.concatenate((Ylabel, prevY))
-            Y = invA @ (W @ concat)
+            Y = invA * (W @ concat)
             self.hist.append(concat)
 
             if np.linalg.norm(Y - prevY) < 0.01:
@@ -139,12 +145,9 @@ class graph():
         
         # Guarda Rótulos
         labels = deli(np.concatenate((Ylabel, Y)))
-        self.Ylabel = labels[:self.n_lab] 
-        self.Ytarget = np.concatenate(
-            (labels[self.n_lab:(self.n_train+self.n_lab)], np.zeros(self.n_unlab))) 
-        
-        # PODE ISSO?
-        self.Ytest = labels[-self.n_unlab:]
+        self.Ylabel = labels[:self.n_lab,:] 
+        self.Ytarget = labels[self.n_lab:(self.n_train+self.n_lab),:]
+        self.Ytest = labels[-self.n_unlab:,:]
 
 
 

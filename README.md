@@ -13,10 +13,8 @@ UFMG, Brasil
 
 As seguintes bibliotecas são necessárias: (não atualizado)
 
-`pip3 install d2l`
-
 `pip3 install mxnet`
 
-## Dúvidas:
-- O vetor I é necessário?
-
+## A fazer:
+- Acurária
+- Softmax
