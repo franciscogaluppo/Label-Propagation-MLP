@@ -16,5 +16,5 @@ As seguintes bibliotecas são necessárias: (não atualizado)
 `pip3 install mxnet`
 
 ## A fazer:
-- Acurária
-- Softmax
+
+Ver no Notion.
