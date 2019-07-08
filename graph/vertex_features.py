@@ -5,7 +5,7 @@ from itertools import groupby as gb
 direct = lambda x: x if x[0] <= x[1] else x[::-1]
 direct_list = lambda x: [direct(a) for a in x]
 
-class read_graph_vertex_features(graph):
+class vertex_features(graph):
 
     def __init__(self, edge_list, vertex_features, n_lab, n_tar, labels, direcionado=True):
     """

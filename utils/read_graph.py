@@ -1,4 +1,4 @@
-from read_graph_vertex_features import read_graph_vertex_features as RGVF
+from vertex_features import vertex_features as vf
 
 #
 # Espaço para implementar a leituras dos dados,

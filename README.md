@@ -9,12 +9,17 @@ franciscogaluppo@dcc.ufmg.br
 UFMG, Brasil
 
 
-## Bibliotecas necessárias
+### Descrição
 
-As seguintes bibliotecas são necessárias: (não atualizado)
+**INCOMPLETO**
 
-`pip3 install mxnet`
 
-## A fazer:
+### Diretórios
 
-Ver no Notion.
+**INCOMPLETO**
+
+
+### Bibliotecas necessárias
+
+**INCOMPLETO**
+
