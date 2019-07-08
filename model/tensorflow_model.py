@@ -94,9 +94,9 @@ def train(G, loss, epochs, theta, lr, method=1, verbose=True):
         
         # Calcula erro
         with tf.GradientTape() as t:
-            W = weight_matrix(G, theta, method)
-            t.watch(W)
+            t.watch(theta)
 
+            W = weight_matrix(G, theta, method)
             invA = tf.reshape(1/(nd.sum(W, 1))[-k:,], shape=(k,1))
 
             for i in range(100):
