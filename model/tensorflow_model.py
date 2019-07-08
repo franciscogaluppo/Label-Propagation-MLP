@@ -1,12 +1,11 @@
 import numpy as np
-import tensorflow.keras.backend as K
 import tensorflow as tf
 
 # Apenas para ter
 sigm = lambda x: 1. / (1. + nd.exp(-x))
 deli = lambda x: 1*(x>0) - 1*(x<0)
 
-def sgd(theta, lr):
+def sgd(theta, lr): #!!!!!!!
     """
     Gradient descent.
     :param theta: Os parametros do modelo
@@ -28,18 +27,18 @@ def weight_matrix(G, theta, method):
     l = G.n_lab
     k = n-l
 
-    adj = nd.reshape(nd.array(G.adj[-k:,]), shape=(k*n, 1))
-    known = nd.array(G.feats[:,-k*n:])
+    adj = tf.convert_to_tensor(G.adj[-k:,].reshape((k*n, 1)))
+    known = tf.convert_to_tensor(G.feats[:,-k*n:])
     
     # Calcula pesos
     if method == 1:
-        temp = nd.transpose(nd.dot(theta[0], known) + theta[1])
-        W = nd.reshape(sigm(temp) * adj, shape=(k,n))
+        temp = tf.transpose(tf.matmul(theta[0], known) + theta[1])
+        W = tf.reshape(sigm(temp) * adj, shape=(k,n))
 
     elif method == 2:
-        temp = nd.relu(nd.dot(theta[0], known) + theta[1])
-        temp = nd.transpose(sigm(nd.dot(theta[2], temp) + theta[3])) * adj
-        W = nd.reshape(temp, shape=(k,n))
+        temp = tf.nn.relu(tf.matmul(theta[0], known) + theta[1])
+        temp = tf.transpose(sigm(tf.matmul(theta[2], temp) + theta[3])) * adj
+        W = tf.reshape(temp, shape=(k,n))
 
     return W
 
@@ -55,18 +54,18 @@ def get_params(G, method):
     n_outputs, n_hiddens = 1, 30
 
     if method == 1:
-        W1 = nd.random.normal(scale=0.01, shape=(1, G.n_feat))
-        b1 = nd.zeros((1, 1))
+        W1 = tf.convert_to_tensor(np.random.normal(scale=0.01, shape=(1, G.n_feat)))
+        b1 = tf.zeros((1, 1))
         params = [W1, b1]
 
     elif method == 2:
-        W1 = nd.random.normal(scale=0.01, shape=(n_hiddens, G.n_feat))
-        b1 = nd.zeros((n_hiddens, 1))
-        W2 = nd.random.normal(scale=0.01, shape=(n_outputs, n_hiddens))
-        b2 = nd.zeros(n_outputs)
+        W1 = tf.convert_to_tensor(np.random.normal(scale=0.01, shape=(n_hiddens, G.n_feat)))
+        b1 = tf.zeros((n_hiddens, 1))
+        W2 = tf.convert_to_tensor(np.random.normal(scale=0.01, shape=(n_outputs, n_hiddens)))
+        b2 = tf.zeros(n_outputs)
         params = [W1, b1, W2, b2]
 
-    for param in params:
+    for param in params: #!!!!!!!
         param.attach_grad()
 
     return params
@@ -84,31 +83,33 @@ def train(G, loss, epochs, theta, lr, method=1, verbose=True):
     # Vetores fixos
     labels = G.labels
     k = G.vertices - G.n_lab
-    Ylabel = nd.array(G.Ylabel).reshape(G.n_lab, labels)
-    Ytarget = nd.array(G.Ytarget).reshape(G.n_train, labels)
-    Ytest = nd.array(G.Ytest).reshape(G.n_unlab, labels)
+    Ylabel = tf.convert_to_tensor(G.Ylabel).reshape(G.n_lab, labels)
+    Ytarget = tf.convert_to_tensor(G.Ytarget).reshape(G.n_train, labels)
+    Ytest = tf.convert_to_tensor(G.Ytest).reshape(G.n_unlab, labels)
 
     theta = get_params(G, method)
         
     for epoch in range(epochs): 
-        prevY = nd.zeros((G.vertices - G.n_lab, 1))
+        prevY = tf.zeros((G.vertices - G.n_lab, 1))
         
         # Calcula erro
-        with autograd.record():
+        with tf.GradientTape() as t:
             W = weight_matrix(G, theta, method)
-            invA = nd.reshape(1/(nd.sum(W, 1))[-k:,], shape=(k,1))
+            t.watch(W)
+
+            invA = tf.reshape(1/(nd.sum(W, 1))[-k:,], shape=(k,1))
 
             for i in range(100):
-                concat = nd.concat(Ylabel, prevY, dim=0)
-                Y = invA * nd.dot(W, concat)
-                if nd.norm(prevY-Y) < 0.01:
+                concat = tf.concat(Ylabel, prevY, dim=0)
+                Y = invA * tf.matmul(W, concat)
+                if tf.norm(prevY-Y) < 0.01:
                     break
                 prevY = Y
 
             l = loss(Y[:G.n_train,:], Ytarget).sum()
         
         # Atualiza autograds
-        l.backward()
+        l.backward() #!!!!!!!
         sgd(theta, lr) 
         
         # Escreve saída
@@ -120,6 +121,7 @@ def train(G, loss, epochs, theta, lr, method=1, verbose=True):
 
             print(epoch+1, train_l)
 
+            # SAIDAS:
             #train_acc = (Yhard[:G.n_train] == Ytarget)
             #train_acc = train_acc.sum().asscalar() /  G.n_train
 
