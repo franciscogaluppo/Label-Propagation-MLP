@@ -1,4 +1,4 @@
-from graph import graph
+from graphs.graph import graph
 import numpy as np
 from copy import copy
 import matplotlib.pyplot as plt
@@ -10,7 +10,7 @@ deli = lambda x: 1*(x>0) - 1*(x<0)
 sigm = lambda x: 1. / (1. + np.exp(-x))
 reLu = lambda x: np.maximum(x, 0, x)
 
-class random(graph):
+class random_features(graph):
 
     def __init__(self, n_lab=10, n_train=10, n_unlab=50, n_feat=10, labels=1, method=1, p=.1):
         """
@@ -19,6 +19,11 @@ class random(graph):
         :param n_train: número de vértices de treino
         :param n_unlab: número de vértices sem rótulo
         :param n_feat: número de features para cada aresta
+        
+        !!!!!!!!!!!
+        :param labels:
+        :param method:
+        :param p:
         """ 
 
         # Guarda os valores
@@ -147,6 +152,11 @@ class random(graph):
     def animate_convergence(self,real=True,save=False,name="vid.mp4"):
         """
         Cria uma animação do algoritmo de label propagation
+        
+        !!!!!!!!!!!
+        :param real:
+        :param save:
+        :param name:
         """
 
         # Cria figura
