@@ -3,6 +3,8 @@ from mxnet import autograd, nd
 sigm = lambda x: 1. / (1. + nd.exp(-x))
 deli = lambda x: 1*(x>0) - 1*(x<0)
 
+def acc(a, b): return (a == b).sum().asscalar() / len(a)
+
 def sgd(theta, lr):
     """
     Gradient descent.
@@ -84,11 +86,10 @@ def train(G, loss, epochs, theta, lr, method=1, verbose=True):
     Ylabel = nd.array(G.Ylabel).reshape(G.n_lab, labels)
     Ytarget = nd.array(G.Ytarget).reshape(G.n_train, labels)
     Ytest = nd.array(G.Ytest).reshape(G.n_unlab, labels)
-
     theta = get_params(G, method)
         
     for epoch in range(epochs): 
-        prevY = nd.zeros((G.vertices - G.n_lab, 1))
+        prevY = nd.zeros((k, labels))
         
         # Calcula erro
         with autograd.record():
@@ -98,6 +99,7 @@ def train(G, loss, epochs, theta, lr, method=1, verbose=True):
             for i in range(100):
                 concat = nd.concat(Ylabel, prevY, dim=0)
                 Y = invA * nd.dot(W, concat)
+
                 if nd.norm(prevY-Y) < 0.01:
                     break
                 prevY = Y
@@ -112,17 +114,9 @@ def train(G, loss, epochs, theta, lr, method=1, verbose=True):
         if verbose:
             Y = Y.astype('float32')
             Yhard = deli(Y)
-
             train_l = l.asscalar() / len(Y)
+            train_acc = acc(Yhard[:G.n_train], Ytarget)
+            test_acc = acc(Yhard[-G.n_unlab:], Ytest)
 
-            print(epoch+1, train_l)
-
-            #train_acc = (Yhard[:G.n_train] == Ytarget)
-            #train_acc = train_acc.sum().asscalar() /  G.n_train
-
-            #test_acc = Yhard[-G.n_unlab:] == Ytest
-            #test_acc = test_acc.sum().asscalar() / G.n_unlab
-
-            #print('epoch {}, loss {:.4f}, train acc {:.3f}, test acc {:.3}'.format(
-            #epoch+1, train_l, train_acc, test_acc))
+            print('epoch {}, loss {:.4f}, train acc {:.3f}, test acc {:.3}'.format(epoch+1, train_l, train_acc, test_acc))
 

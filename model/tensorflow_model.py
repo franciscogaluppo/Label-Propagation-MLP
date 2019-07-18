@@ -2,18 +2,10 @@ import numpy as np
 import tensorflow as tf
 
 # Apenas para ter
-sigm = lambda x: 1. / (1. + nd.exp(-x))
+sigm = lambda x: 1. / (1. + tf.math.exp(-x))
 deli = lambda x: 1*(x>0) - 1*(x<0)
 
-def sgd(theta, lr): #!!!!!!!
-    """
-    Gradient descent.
-    :param theta: Os parametros do modelo
-    :param lr: Taxa de aprendizado
-    """
-    for param in theta:
-        param[:] = param - lr * param.grad
-
+def acc(a, b): return (a == b).sum().asscalar() / len(a)
 
 def weight_matrix(G, theta, method):
     """
@@ -27,7 +19,7 @@ def weight_matrix(G, theta, method):
     l = G.n_lab
     k = n-l
 
-    adj = tf.convert_to_tensor(G.adj[-k:,].reshape((k*n, 1)))
+    adj = tf.convert_to_tensor(G.adj[-k:,].reshape((k*n, 1)), dtype=tf.float64)
     known = tf.convert_to_tensor(G.feats[:,-k*n:])
     
     # Calcula pesos
@@ -54,19 +46,16 @@ def get_params(G, method):
     n_outputs, n_hiddens = 1, 30
 
     if method == 1:
-        W1 = tf.convert_to_tensor(np.random.normal(scale=0.01, shape=(1, G.n_feat)))
-        b1 = tf.zeros((1, 1))
+        W1 = tf.convert_to_tensor(np.random.normal(scale=0.01, size=(1, G.n_feat)))
+        b1 = tf.zeros((1, 1), dtype=tf.float64)
         params = [W1, b1]
 
     elif method == 2:
-        W1 = tf.convert_to_tensor(np.random.normal(scale=0.01, shape=(n_hiddens, G.n_feat)))
+        W1 = tf.convert_to_tensor(np.random.normal(scale=0.01, size=(n_hiddens, G.n_feat)))
         b1 = tf.zeros((n_hiddens, 1))
-        W2 = tf.convert_to_tensor(np.random.normal(scale=0.01, shape=(n_outputs, n_hiddens)))
+        W2 = tf.convert_to_tensor(np.random.normal(scale=0.01, size=(n_outputs, n_hiddens)))
         b2 = tf.zeros(n_outputs)
         params = [W1, b1, W2, b2]
-
-    for param in params: #!!!!!!!
-        param.attach_grad()
 
     return params
 
@@ -83,11 +72,13 @@ def train(G, loss, epochs, theta, lr, method=1, verbose=True):
     # Vetores fixos
     labels = G.labels
     k = G.vertices - G.n_lab
-    Ylabel = tf.convert_to_tensor(G.Ylabel).reshape(G.n_lab, labels)
-    Ytarget = tf.convert_to_tensor(G.Ytarget).reshape(G.n_train, labels)
-    Ytest = tf.convert_to_tensor(G.Ytest).reshape(G.n_unlab, labels)
+    Ylabel = tf.reshape(tf.convert_to_tensor(G.Ylabel), shape=(G.n_lab, labels))
+    Ytarget = tf.reshape(tf.convert_to_tensor(G.Ytarget), shape=(G.n_train, labels))
+    Ytest = tf.reshape(tf.convert_to_tensor(G.Ytest), shape=(G.n_unlab, labels))
 
+    # Parametros e otimizador
     theta = get_params(G, method)
+    opt = tf.compat.v1.train.GradientDescentOptimizer(lr)
         
     for epoch in range(epochs): 
         prevY = tf.zeros((G.vertices - G.n_lab, 1))
@@ -97,38 +88,24 @@ def train(G, loss, epochs, theta, lr, method=1, verbose=True):
             t.watch(theta)
 
             W = weight_matrix(G, theta, method)
-            invA = tf.reshape(1/(nd.sum(W, 1))[-k:,], shape=(k,1))
+            invA = tf.reshape(1/(tf.math.reduce_sum(W, 1))[-k:,], shape=(k,1))
 
             for i in range(100):
-                concat = tf.concat(Ylabel, prevY, dim=0)
+                concat = tf.concat(Ylabel, prevY)
                 Y = invA * tf.matmul(W, concat)
                 if tf.norm(prevY-Y) < 0.01:
                     break
                 prevY = Y
+        
+        # TODO: Loss function
+        train = opt.minimize(tf.subtract(Y[:G.n_train,:], Ytarget))
 
-            l = loss(Y[:G.n_train,:], Ytarget).sum()
-        
-        # Atualiza autograds
-        l.backward() #!!!!!!!
-        sgd(theta, lr) 
-        
         # Escreve saída
         if verbose:
             Y = Y.astype('float32')
             Yhard = deli(Y)
-
             train_l = l.asscalar() / len(Y)
+            train_acc = acc(Yhard[:G.n_train], Ytarget)
+            test_acc = acc(Yhard[-G.n_unlab:], Ytest)
 
-            print(epoch+1, train_l)
-
-            # SAIDAS:
-            #train_acc = (Yhard[:G.n_train] == Ytarget)
-            #train_acc = train_acc.sum().asscalar() /  G.n_train
-
-            #test_acc = Yhard[-G.n_unlab:] == Ytest
-            #test_acc = test_acc.sum().asscalar() / G.n_unlab
-
-            #print('epoch {}, loss {:.4f}, train acc {:.3f}, test acc {:.3}'.format(
-            #epoch+1, train_l, train_acc, test_acc))
-
-
+            print('epoch {}, loss {:.4f}, train acc {:.3f}, test acc {:.3}'.format(epoch+1, train_l, train_acc, test_acc))
