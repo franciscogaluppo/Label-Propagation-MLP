@@ -118,5 +118,5 @@ def train(G, loss, epochs, theta, lr, method=1, verbose=True):
             train_acc = acc(Yhard[:G.n_train], Ytarget)
             test_acc = acc(Yhard[-G.n_unlab:], Ytest)
 
-            print('epoch {}, loss {:.4f}, train acc {:.3f}, test acc {:.3}'.format(epoch+1, train_l, train_acc, test_acc))
+            print('epoch {:3d}, loss {:.4f}, train acc {:.3f}, test acc {:.3}'.format(epoch+1, train_l, train_acc, test_acc))
 

@@ -13,7 +13,7 @@ UFMG, Brasil
 
 Então, os planos são:
 
-- Calcular a matriz de pesos no tensorflow
+- Calcular a matriz de pesos no tensorflow :+1:
 - Terminar e testar classe que lê as features dos vértices e prepara o grafo
 - Testar com os dados do CORA
 

@@ -5,9 +5,9 @@ import tensorflow.compat.v1 as tf
 sigm = lambda x: 1. / (1. + tf.math.exp(-x))
 deli = lambda x: 1*(x>0) - 1*(x<0)
 
-def acc(a, b): return (a == b).sum().asscalar() / len(a)
+def acc(a, b): return (a == b).sum() / len(a)
 
-# TODO: SOLVE THIS
+
 def weight_matrix(G, theta, method):
     """
     Calcula os pesos das arestas com base nas features
@@ -20,7 +20,7 @@ def weight_matrix(G, theta, method):
     l = G.n_lab
     k = n-l
 
-    adj = tf.convert_to_tensor(G.adj[-k:,].reshape((k*n, 1)))
+    adj = tf.convert_to_tensor(G.adj[-k:,].reshape((k*n, 1)).astype(np.float64))
     known = tf.convert_to_tensor(G.feats[:,-k*n:])
     
     # Calcula pesos
@@ -37,12 +37,44 @@ def weight_matrix(G, theta, method):
     return W
 
 
-def train(G, epochs, lr, verbose=True):
+def get_params(G, method):
+    """
+    Get the params for the model.
+    :param G: Grafo de entrada
+    :param method: metodo do modelo
+    :return: retorna lista de parametros do modelo
+    """
+    
+    n_outputs, n_hiddens = 1, 30
+
+    if method == 1:
+        W1 = tf.Variable(np.random.normal(scale=0.01, size=(1, G.n_feat)))
+        b1 = tf.Varible(tf.zeros((1, 1), dtype=tf.float64))
+        params = [W1, b1]
+
+    elif method == 2:
+        W1 = tf.Variable(np.random.normal(scale=0.01, size=(n_hiddens, G.n_feat)))
+        b1 = tf.Variable(tf.zeros((n_hiddens, 1), dtype=tf.float64))
+        W2 = tf.Variable(np.random.normal(scale=0.01, size=(n_outputs, n_hiddens)))
+        b2 = tf.Variable(tf.zeros(n_outputs, dtype=tf.float64))
+        params = [W1, b1, W2, b2]
+
+    return params
+
+# Operações de controle de fluxo
+def cond(t1, t2, t3, t4, i, n):
+    return tf.less(i, n)
+
+def body(t1, t2, t3, t4, i, n):
+    return [t1, t3*tf.matmul(t4, tf.concat([t1, t2], 0)), t3, t4, tf.add(i, 1), n]
+
+def train(G, epochs, lr, method, verbose=True):
     """
     Train and evaluate a model with CPU.
     :param G: Objeto graph com todos os dados
     :param epochs: Número de epochs
     :param lr: Taxa de aprendizado
+    :param method: Método do modelo
     :param verbose: Bool para informações da execução na saída padrão
     """
 
@@ -52,11 +84,13 @@ def train(G, epochs, lr, verbose=True):
     Ytest = G.Ytest.reshape((G.n_unlab, labels))
     Ylabel_numeric = G.Ylabel.reshape((G.n_lab, labels))
     Ytarget_numeric = G.Ytarget.reshape((G.n_train, labels))
+    n = tf.constant(100)
 
-    # Placeholders
-    Ylabel = tf.placeholder(dtype=tf.float64, shape=[None, G.n_lab, labels])
-    Ytarget = tf.placeholder(dtype=tf.float64, shape=[None, G.n_train, labels])
+    # Placeholders e variáveis
+    Ylabel = tf.placeholder(dtype=tf.float64, shape=[G.n_lab, labels])
+    Ytarget = tf.placeholder(dtype=tf.float64, shape=[G.n_train, labels])
     Y = tf.Variable(tf.zeros([G.n_train, labels], dtype=tf.float64))
+    theta = get_params(G, method)
 
     # Otimizador
     loss = tf.reduce_mean(
@@ -70,33 +104,27 @@ def train(G, epochs, lr, verbose=True):
 
     # Label propagation
     for epoch in range(epochs): 
-        prevY = tf.zeros((G.vertices - G.n_lab, 1))
-        
+        prevY = tf.zeros((G.vertices - G.n_lab, 1), dtype=tf.float64)
         W = weight_matrix(G, theta, method)
         invA = tf.reshape(1/(tf.math.reduce_sum(W, 1))[-k:,], shape=(k,1))
-
-        for i in range(100):
-            concat = tf.concat(Ylabel, prevY)
-            currY = invA * tf.matmul(W, concat)
-            if tf.norm(prevY-Y) < 0.01:
-                break
-            prevY = currY
-       
-        ass = Y.assign(currY[:G.n_train])
+    
+        # Itera até convergir 
+        res = tf.while_loop(cond, body, [Ylabel, prevY, invA, W, 0, n])
+        ass = Y.assign(res[1][:G.n_train])
 
         # Computa 
-        sess.run(ass)
-        sess.run(opt, feed_dict={Ylabel: Ylabel_numeric, Ytarget: Ytarget_numeric})
+        assY = sess.run(ass, feed_dict={Ylabel: Ylabel_numeric})
+        _, l = sess.run([opt, loss], feed_dict={Ytarget: Ytarget_numeric})
 
         # Escreve saída
         if verbose:
-            Y = Y.astype('float32')
-            Yhard = deli(Y)
-            train_l = loss.asscalar() / len(Y)
-            train_acc = acc(Yhard[:G.n_train], Ytarget)
+            #Y = Y.astype('float32')
+            Yhard = deli(assY)
+            train_l = l / len(assY)
+            train_acc = acc(Yhard[:G.n_train], Ytarget_numeric)
             test_acc = acc(Yhard[-G.n_unlab:], Ytest)
 
-            print('epoch {}, loss {:.4f}, train acc {:.3f}, test acc {:.3}'.format(
+            print('epoch {:3d}, loss {:.4f}, train acc {:.3f}, test acc {:.3}'.format(
                 epoch+1, train_l, train_acc, test_acc))
 
     
