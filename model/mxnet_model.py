@@ -1,9 +1,10 @@
 from mxnet import autograd, nd
+from mxnet.gluon import loss as gloss
 
 sigm = lambda x: 1. / (1. + nd.exp(-x))
-deli = lambda x: 1*(x>0) - 1*(x<0)
+deli = lambda a: (a == a.max(axis=1, keepdims=1)).astype(float)
 
-def acc(a, b): return (a == b).sum().asscalar() / len(a)
+def acc(a, b): return (a * b).sum() / len(a)
 
 def sgd(theta, lr):
     """
@@ -71,21 +72,26 @@ def get_params(G, method):
     return params
 
 
-def train(G, loss, epochs, theta, lr, method=1, verbose=True):
+def train(G, epochs, theta, lr, method=1, verbose=True):
     """
     Train and evaluate a model with CPU.
     :param G: Objeto graph com todos os dados
-    :param loss: Função de perda
     :param epochs: numéro de epochs
     :param theta: Parametros do modelo
     :param lr: Taxa de aprendizado
     """
-    # Vetores fixos
+
+    loss = gloss.SoftmaxCrossEntropyLoss(sparse_label=False)
+
+    # Fixos
     labels = G.labels
     k = G.vertices - G.n_lab
+    Ytest = G.Ytest.reshape((G.n_unlab, labels))
+    Ytarget_numeric = G.Ytarget.reshape(G.n_train, labels)
+
+    # Vetores
     Ylabel = nd.array(G.Ylabel).reshape(G.n_lab, labels)
-    Ytarget = nd.array(G.Ytarget).reshape(G.n_train, labels)
-    Ytest = nd.array(G.Ytest).reshape(G.n_unlab, labels)
+    Ytarget = nd.array(Ytarget_numeric)
     theta = get_params(G, method)
         
     for epoch in range(epochs): 
@@ -112,11 +118,11 @@ def train(G, loss, epochs, theta, lr, method=1, verbose=True):
         
         # Escreve saída
         if verbose:
-            Y = Y.astype('float32')
+            Y = Y.asnumpy()
             Yhard = deli(Y)
             train_l = l.asscalar() / len(Y)
-            train_acc = acc(Yhard[:G.n_train], Ytarget)
+            train_acc = acc(Yhard[:G.n_train], Ytarget_numeric)
             test_acc = acc(Yhard[-G.n_unlab:], Ytest)
 
-            print('epoch {:3d}, loss {:.4f}, train acc {:.3f}, test acc {:.3}'.format(epoch+1, train_l, train_acc, test_acc))
+            print('epoch {:3d}, loss {:.4f}, train acc {:.3f}, test acc {:.3f}'.format(epoch+1, train_l, train_acc, test_acc))
 

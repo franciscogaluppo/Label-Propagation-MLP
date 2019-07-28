@@ -3,9 +3,9 @@ import tensorflow.compat.v1 as tf
 
 # Apenas para ter
 sigm = lambda x: 1. / (1. + tf.math.exp(-x))
-deli = lambda x: 1*(x>0) - 1*(x<0)
+deli = lambda a: (a == a.max(axis=1, keepdims=1)).astype(float)
 
-def acc(a, b): return (a == b).sum() / len(a)
+def acc(a, b): return (a * b).sum() / len(a)
 
 
 def weight_matrix(G, theta, method):
@@ -49,7 +49,7 @@ def get_params(G, method):
 
     if method == 1:
         W1 = tf.Variable(np.random.normal(scale=0.01, size=(1, G.n_feat)))
-        b1 = tf.Varible(tf.zeros((1, 1), dtype=tf.float64))
+        b1 = tf.Variable(tf.zeros((1, 1), dtype=tf.float64))
         params = [W1, b1]
 
     elif method == 2:
@@ -93,18 +93,17 @@ def train(G, epochs, lr, method, verbose=True):
     theta = get_params(G, method)
 
     # Otimizador
-    loss = tf.reduce_mean(
+    loss = tf.reduce_sum(
         tf.nn.softmax_cross_entropy_with_logits_v2(logits=Y, labels=Ytarget))
     opt = tf.train.GradientDescentOptimizer(learning_rate=lr).minimize(loss)
     
     # Inicializa
-    tf.set_random_seed(1234)
     sess = tf.Session()
     sess.run(tf.global_variables_initializer())
 
     # Label propagation
     for epoch in range(epochs): 
-        prevY = tf.zeros((G.vertices - G.n_lab, 1), dtype=tf.float64)
+        prevY = tf.zeros((G.vertices - G.n_lab, labels), dtype=tf.float64)
         W = weight_matrix(G, theta, method)
         invA = tf.reshape(1/(tf.math.reduce_sum(W, 1))[-k:,], shape=(k,1))
     
@@ -124,8 +123,7 @@ def train(G, epochs, lr, method, verbose=True):
             train_acc = acc(Yhard[:G.n_train], Ytarget_numeric)
             test_acc = acc(Yhard[-G.n_unlab:], Ytest)
 
-            print('epoch {:3d}, loss {:.4f}, train acc {:.3f}, test acc {:.3}'.format(
-                epoch+1, train_l, train_acc, test_acc))
+            print('epoch {:3d}, loss {:.4f}, train acc {:.3f}, test acc {:.3f}'.format( epoch+1, train_l, train_acc, test_acc))
 
     
     sess.close()
