@@ -109,6 +109,14 @@ class random_features(graph):
         adj = np.reshape(self.adj[l:,], newshape=(n*k))
 
         if method == 1:
+            W1 = np.random.normal(size=(1, self.n_feat))
+            b1 = np.random.normal(size=(1, 1))
+
+            unknown = self.feats[:,(n*l):]
+            W = sigm(W1 @ unknown + b1) * adj
+            W.shape = (k,n)
+
+        elif method == 2:
             W1 = np.random.normal(size=(n_hidden, self.n_feat))
             W2 = np.random.normal(size=(n_hidden))
             b1 = np.random.normal(size=(n_hidden, 1))
@@ -116,14 +124,6 @@ class random_features(graph):
             
             unknown = self.feats[:,(n*l):]
             W = sigm(W2 @ (reLu(W1 @ unknown + b1)) + b2) * adj
-            W.shape = (k,n)
-
-        elif method == 2:
-            W1 = np.random.normal(size=(1, self.n_feat))
-            b1 = np.random.normal(size=(1, 1))
-
-            unknown = self.feats[:,(n*l):]
-            W = sigm(W1 @ unknown + b1) * adj
             W.shape = (k,n)
 
         prevY = np.zeros((k, self.labels)) + 0.5

@@ -112,12 +112,11 @@ def train(G, epochs, lr, method, verbose=True):
         ass = Y.assign(res[1][:G.n_train])
 
         # Computa 
-        assY = sess.run(ass, feed_dict={Ylabel: Ylabel_numeric})
-        _, l = sess.run([opt, loss], feed_dict={Ytarget: Ytarget_numeric})
+        assY, _, l = sess.run([ass, opt, loss],
+            feed_dict={Ylabel: Ylabel_numeric, Ytarget: Ytarget_numeric})
 
         # Escreve saída
         if verbose:
-            #Y = Y.astype('float32')
             Yhard = deli(assY)
             train_l = l / len(assY)
             train_acc = acc(Yhard[:G.n_train], Ytarget_numeric)
