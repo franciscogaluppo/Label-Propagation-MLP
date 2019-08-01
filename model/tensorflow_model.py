@@ -7,59 +7,29 @@ deli = lambda a: (a == a.max(axis=1, keepdims=1)).astype(float)
 
 def acc(a, b): return (a * b).sum() / len(a)
 
-
-def weight_matrix(G, theta, method):
-    """
-    Calcula os pesos das arestas com base nas features
-    :param G: Grafo de entrada
-    :param theta: Os parametros do modelo
-    :param method: O método para cáluclo dos pesos
-    :return: Matriz de pesos das arestas
-    """
-    n = G.vertices
-    l = G.n_lab
-    k = n-l
-
-    adj = tf.convert_to_tensor(G.adj[-k:,].reshape((k*n, 1)).astype(np.float64))
-    known = tf.convert_to_tensor(G.feats[:,-k*n:])
-    
-    # Calcula pesos
-    if method == 1:
-        temp = tf.transpose(tf.matmul(theta[0], known) + theta[1])
-        W = tf.reshape(sigm(temp) * adj, shape=(k,n))
-
-    elif method == 2:
-        temp1 = tf.nn.relu(tf.matmul(theta[0], known) + theta[1])
-        temp2 = tf.transpose(sigm(tf.matmul(theta[2], temp1) + theta[3]))
-        temp3 = tf.multiply(temp2, adj)
-        W = tf.reshape(temp3, shape=(k,n))
-
-    return W
-
-
-def get_params(G, method):
-    """
-    Get the params for the model.
-    :param G: Grafo de entrada
-    :param method: metodo do modelo
-    :return: retorna lista de parametros do modelo
-    """
-    
-    n_outputs, n_hiddens = 1, 30
-
-    if method == 1:
-        W1 = tf.Variable(np.random.normal(scale=0.01, size=(1, G.n_feat)))
-        b1 = tf.Variable(tf.zeros((1, 1), dtype=tf.float64))
-        params = [W1, b1]
-
-    elif method == 2:
-        W1 = tf.Variable(np.random.normal(scale=0.01, size=(n_hiddens, G.n_feat)))
-        b1 = tf.Variable(tf.zeros((n_hiddens, 1), dtype=tf.float64))
-        W2 = tf.Variable(np.random.normal(scale=0.01, size=(n_outputs, n_hiddens)))
-        b2 = tf.Variable(tf.zeros(n_outputs, dtype=tf.float64))
-        params = [W1, b1, W2, b2]
-
-    return params
+#def get_params(G, method):
+#    """
+#    Get the params for the model.
+#    :param G: Grafo de entrada
+#    :param method: metodo do modelo
+#    :return: retorna lista de parametros do modelo
+#    """
+#    
+#    n_outputs, n_hiddens = 1, 30
+# 
+#    if method == 1:
+#        W1 = tf.Variable(np.random.normal(scale=0.01, size=(1, G.n_feat)))
+#        b1 = tf.Variable(tf.zeros((1, 1), dtype=tf.float64))
+#        params = [W1, b1]
+# 
+#    elif method == 2:
+#        W1 = tf.Variable(np.random.normal(scale=0.01, size=(n_hiddens, G.n_feat)))
+#        b1 = tf.Variable(tf.zeros((n_hiddens, 1), dtype=tf.float64))
+#        W2 = tf.Variable(np.random.normal(scale=0.01, size=(n_outputs, n_hiddens)))
+#        b2 = tf.Variable(tf.zeros(n_outputs, dtype=tf.float64))
+#        params = [W1, b1, W2, b2]
+# 
+#    return params
 
 # Operações de controle de fluxo
 def cond(t1, t2, t3, t4, i, n):
@@ -67,6 +37,11 @@ def cond(t1, t2, t3, t4, i, n):
 
 def body(t1, t2, t3, t4, i, n):
     return [t1, t3*tf.matmul(t4, tf.concat([t1, t2], 0)), t3, t4, tf.add(i, 1), n]
+
+#TODO: metodo 1
+#    if method == 1:
+#        temp = tf.transpose(tf.matmul(theta[0], known) + theta[1])
+#        W = tf.reshape(sigm(temp) * adj, shape=(k,n))
 
 def train(G, epochs, lr, method, verbose=True):
     """
@@ -80,17 +55,36 @@ def train(G, epochs, lr, method, verbose=True):
 
     # Constantes
     labels = G.labels
-    k = G.vertices - G.n_lab 
-    Ytest = G.Ytest.reshape((G.n_unlab, labels))
-    Ylabel_numeric = G.Ylabel.reshape((G.n_lab, labels))
-    Ytarget_numeric = G.Ytarget.reshape((G.n_train, labels))
-    n = tf.constant(100)
+    
+    n = G.vertices
+    l = G.n_lab
+    k = n-l
+    
+    n_outputs, n_hiddens = 1, 30
+    idx = tf.constant(100)
 
-    # Placeholders e variáveis
-    Ylabel = tf.placeholder(dtype=tf.float64, shape=[G.n_lab, labels])
+    # Numeric
+    Ytest = G.Ytest.reshape((G.n_unlab, labels))
+    Ylabel_numeric = G.Ylabel.reshape((l, labels))
+    Ytarget_numeric = G.Ytarget.reshape((G.n_train, labels))
+    adj_numeric = G.adj[-k:,].reshape((k*n, 1)).astype(np.float64)
+    known_numeric = G.feats[:,-k*n:]
+
+    # Placeholders
+    Ylabel = tf.placeholder(dtype=tf.float64, shape=[l, labels])
     Ytarget = tf.placeholder(dtype=tf.float64, shape=[G.n_train, labels])
+    adj = tf.placeholder(dtype=tf.float64, shape=[k*n, 1])
+    known = tf.placeholder(dtype=tf.float64, shape=[G.n_feat, k*n])
+
+    # Variáveis
     Y = tf.Variable(tf.zeros([G.n_train, labels], dtype=tf.float64))
-    theta = get_params(G, method)
+    W1 = tf.Variable(np.random.normal(scale=0.01, size=(n_hiddens, G.n_feat)))
+    b1 = tf.Variable(tf.zeros((n_hiddens, 1), dtype=tf.float64))
+    W2 = tf.Variable(np.random.normal(scale=0.01, size=(n_outputs, n_hiddens)))
+    b2 = tf.Variable(tf.zeros(n_outputs, dtype=tf.float64))
+
+    W = tf.Variable(tf.zeros((k, n), dtype=tf.float64))
+    invA = tf.Variable(tf.zeros((k, 1), dtype=tf.float64))
 
     # Otimizador
     loss = tf.reduce_sum(
@@ -103,17 +97,20 @@ def train(G, epochs, lr, method, verbose=True):
 
     # Label propagation
     for epoch in range(epochs): 
-        prevY = tf.zeros((G.vertices - G.n_lab, labels), dtype=tf.float64)
-        W = weight_matrix(G, theta, method)
-        invA = tf.reshape(1/(tf.math.reduce_sum(W, 1))[-k:,], shape=(k,1))
+        prevY = tf.zeros((k, labels), dtype=tf.float64)
+        
+        ass1 = W.assign(tf.reshape(tf.multiply(tf.transpose(sigm(tf.matmul(W2, tf.nn.relu(tf.matmul(W1, known) + b1)) + b2)), adj), shape=(k,n)))
+
+        ass2 = invA.assign(tf.reshape(1/(tf.math.reduce_sum(W, 1))[-k:,],shape=(k,1)))
     
         # Itera até convergir 
-        res = tf.while_loop(cond, body, [Ylabel, prevY, invA, W, 0, n])
-        ass = Y.assign(res[1][:G.n_train])
+        loop = tf.while_loop(cond, body, [Ylabel, prevY, invA, W, 0, idx])
+        ass3 = Y.assign(loop[1][:G.n_train])
 
         # Computa 
-        assY, _, l = sess.run([ass, opt, loss],
-            feed_dict={Ylabel: Ylabel_numeric, Ytarget: Ytarget_numeric})
+        _, _, assY, l, _ = sess.run([ass1, ass2, ass3, opt, loss],
+            feed_dict={Ylabel: Ylabel_numeric, Ytarget: Ytarget_numeric,
+                adj: adj_numeric, known: known_numeric})
 
         # Escreve saída
         if verbose:

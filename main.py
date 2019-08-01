@@ -10,9 +10,9 @@ num_epochs, lr = 10, 0.01
 
 ### MXNET
 
-print("MXNET")
-import model.mxnet_model as model1
-model1.train(G, num_epochs, lr, method)
+#print("MXNET")
+#import model.mxnet_model as model1
+#model1.train(G, num_epochs, lr, method)
 
 #-------------------------------------------------------------#
 
