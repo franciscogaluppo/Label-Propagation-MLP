@@ -1,4 +1,8 @@
 from graphs.random_features import random_features as graph
+import model.mxnet_model as model1
+import model.tensorflow_model as model2
+
+#-------------------------------------------------------------#
 
 # Cria um grafo exemplo
 method, labels = 2, 2
@@ -9,15 +13,9 @@ num_epochs, lr = 10, 0.01
 #-------------------------------------------------------------#
 
 ### MXNET
-
-#print("MXNET")
-#import model.mxnet_model as model1
-#model1.train(G, num_epochs, lr, method)
-
-#-------------------------------------------------------------#
+print("MXNET")
+model1.train(G, num_epochs, lr, method)
 
 ### Tensorflow
-
 print("\n\nTENSORFLOW")
-import model.tensorflow_model as model2
 model2.train(G, num_epochs, lr, method)
