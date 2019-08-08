@@ -2,7 +2,12 @@ from mxnet import autograd, nd
 from mxnet.gluon import loss as gloss
 
 sigm = lambda x: 1. / (1. + nd.exp(-x))
-deli = lambda a: (a == a.max(axis=1, keepdims=1)).astype(float)
+def deli(a):
+    (a == a.max(axis=1, keepdims=1)).astype(float)
+    for i in range(len(a)):
+        if(a[i,:].sum() > 1):
+            a[i,:] *= 0
+    return a
 
 def acc(a, b): return (a * b).sum() / len(a)
 
@@ -125,4 +130,3 @@ def train(G, epochs, theta, lr, method=1, verbose=True):
             test_acc = acc(Yhard[-G.n_unlab:], Ytest)
 
             print('epoch {:3d}, loss {:.4f}, train acc {:.3f}, test acc {:.3f}'.format(epoch+1, train_l, train_acc, test_acc))
-

@@ -2,12 +2,8 @@ import numpy as np
 import tensorflow.compat.v1 as tf
 
 # Apenas para ter
-def deli(a):
-    (a == a.max(axis=1, keepdims=1)).astype(float)
-    for i in range(len(a)):
-        if(a[i,:].sum() > 1):
-            a[i,:] *= 0
-    return a
+sigm = lambda x: 1. / (1. + tf.math.exp(-x))
+deli = lambda a: (a == a.max(axis=1, keepdims=1)).astype(float)
 
 def acc(a, b): return (a * b).sum() / len(a)
 
@@ -57,39 +53,26 @@ def train(G, epochs, lr, method, verbose=True):
     adj = tf.placeholder(dtype=tf.float64, shape=[k*n, 1])
     known = tf.placeholder(dtype=tf.float64, shape=[G.n_feat, k*n])
 
-
+    # Variáveis
+    # TODO: Adicionar o modelo 1
     if(method == 1):
-        # Variáveis
-        W1 = tf.Variable(np.random.normal(scale=0.01, size=(1, G.n_feat)))
-        b1 = tf.Variable(tf.zeros((1, 1), dtype=tf.float64))
-        
-        # Modelo
-        W = tf.reshape(tf.multiply(tf.transpose(tf.divide(1., tf.add(
-            tf.ones([1, k*n], tf.float64), tf.math.exp(-tf.add(tf.matmul(
-            W1, known), b1))))), adj), shape=(k,n))
-
+        pass
     elif(method == 2):
-        # Variáveis
         W1 = tf.Variable(np.random.normal(scale=0.01, size=(n_hiddens, G.n_feat)))
         b1 = tf.Variable(tf.zeros((n_hiddens, 1), dtype=tf.float64))
         W2 = tf.Variable(np.random.normal(scale=0.01, size=(n_outputs, n_hiddens)))
         b2 = tf.Variable(tf.zeros(n_outputs, dtype=tf.float64))
 
         # Modelo
-        W = tf.reshape(tf.multiply(tf.transpose(tf.divide(1., tf.add(
-            tf.ones([1, k*n], tf.float64), tf.math.exp(-tf.add(tf.matmul(
-            W2, tf.nn.relu(tf.add(tf.matmul(W1, known), b1))), b2))))), adj), shape=(k,n))
+        #TODO: inverter e somar com funções do tf
+        W = tf.reshape(tf.multiply(tf.transpose(sigm(tf.add(tf.matmul(W2, tf.nn.relu(tf.add(tf.matmul(W1, known), b1))), b2))), adj), shape=(k,n))
+        invA = tf.linalg.tensor_diag(1/(tf.math.reduce_sum(W, 1))[-k:,])
+        Y = tf.while_loop(cond, body, [Ylabel, prevY, invA, W, 0, idx])[1][:G.n_train]
 
-    else: return
-
-    invA = tf.linalg.tensor_diag(tf.divide(1., (tf.math.reduce_sum(W, 1))[-k:,]))
-    Y = tf.while_loop(cond, body, [Ylabel, prevY, invA, W, 0, idx])[1][:G.n_train]
-
-    # Otimizador
-    loss = tf.reduce_sum(
-        tf.nn.softmax_cross_entropy_with_logits_v2(logits=Y, labels=Ytarget))
-    opt = tf.train.GradientDescentOptimizer(learning_rate=lr).minimize(
-        loss, var_list=[W1, b1] if method == 1 else [W1, b1, W2, b2])
+        # Otimizador
+        loss = tf.reduce_sum(
+            tf.nn.softmax_cross_entropy_with_logits_v2(logits=Y, labels=Ytarget))
+        opt = tf.train.GradientDescentOptimizer(learning_rate=lr).minimize(loss, var_list=[W1, b1, W2, b2])
     
     # Inicializa
     sess = tf.Session()
@@ -109,4 +92,5 @@ def train(G, epochs, lr, method, verbose=True):
 
             print('epoch {:3d}, loss {:.4f}, train acc {:.3f}, test acc {:.3f}'.format( epoch+1, train_l, train_acc, test_acc))
 
+    
     sess.close()
