@@ -6,7 +6,15 @@ from matplotlib.animation import FuncAnimation
 import networkx as nx
 
 # Funções auxiliares
-deli = lambda a: (a == a.max(axis=1, keepdims=1)).astype(float)
+def deli(a):
+    (a == a.max(axis=1, keepdims=1)).astype(float)
+    for i in range(len(a)):
+        if(a[i,:].sum() > 1):
+            idx = np.argmax(a[i,:])
+            a[i,:] *= 0
+            a[i,idx] = 1
+    return a
+
 sigm = lambda x: 1. / (1. + np.exp(-x))
 reLu = lambda x: np.maximum(x, 0, x)
 
