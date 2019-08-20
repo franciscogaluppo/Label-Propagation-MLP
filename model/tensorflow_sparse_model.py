@@ -87,10 +87,20 @@ def train(G, epochs, lr, method, verbose=True):
         b2 = tf.Variable(tf.zeros(n_outputs, dtype=tf.float64))
 
         # Modelo
-        W = tf.sparse.reshape(tf.sparse.transpose(tf.sparse.transpose(adj).__mul__(tf.divide(1.,
-            tf.add(tf.ones([1, k*n], tf.float64),tf.math.exp(-tf.add(tf.matmul(W2,
-            tf.nn.relu(tf.add(tf.transpose(tf.sparse.sparse_dense_matmul(tf.sparse.transpose(known),
-            tf.transpose(W1))), b1))), b2)))))), shape=(k,n))
+        #W = tf.sparse.reshape(tf.sparse.transpose(tf.sparse.transpose(adj).__mul__(tf.divide(1.,
+        #    tf.add(tf.ones([1, k*n], tf.float64),tf.math.exp(-tf.add(tf.matmul(W2,
+        #    tf.nn.relu(tf.add(tf.transpose(tf.sparse.sparse_dense_matmul(tf.sparse.transpose(known),
+        #    tf.transpose(W1))), b1))), b2)))))), shape=(k,n))
+
+        W = tf.transpose(tf.sparse.sparse_dense_matmul(tf.sparse.transpose(known),
+            tf.transpose(W1)))
+
+        print("W1:", W1.shape)
+        print("W1^T:", tf.transpose(W1).shape)
+        print("\nknown:", known.shape)
+        print("known^T:", tf.sparse.transpose(known).shape)
+        print("\n(known^T . W1^T)^T:", W.shape)
+        return
 
     else: return
 
