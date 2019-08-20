@@ -92,8 +92,7 @@ def train(G, epochs, lr, method, verbose=True):
         #    tf.nn.relu(tf.add(tf.transpose(tf.sparse.sparse_dense_matmul(tf.sparse.transpose(known),
         #    tf.transpose(W1))), b1))), b2)))))), shape=(k,n))
 
-        W = tf.transpose(tf.sparse.sparse_dense_matmul(tf.sparse.transpose(known),
-            tf.transpose(W1)))
+        W = tf.transpose(tf.sparse.sparse_dense_matmul(known, W1,adjoint_a=True,adjoint_b=True))
 
         print("W1:", W1.shape)
         print("W1^T:", tf.transpose(W1).shape)
