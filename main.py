@@ -4,6 +4,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from graphs.random_features import random_features as graph
 import model.mxnet_model as model1
 import model.tensorflow_model as model2
+import model.tensorflow_sparse_model as model3
 
 #-------------------------------------------------------------#
 
@@ -17,8 +18,12 @@ num_epochs, lr = 20, 0.5
 
 ### MXNET
 print("MXNET")
-model1.train(G, num_epochs, lr, method)
+#model1.train(G, num_epochs, lr, method)
 
 ### Tensorflow
 print("\n\nTENSORFLOW")
-model2.train(G, num_epochs, lr, method)
+#model2.train(G, num_epochs, lr, method)
+
+### Tensorflow sparse
+print("\n\nTENSORFLOW SPARSE")
+model3.train(G, num_epochs, lr, method)

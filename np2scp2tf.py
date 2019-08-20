@@ -15,14 +15,9 @@ a = np.array([[0, 0, 0],
              [0, np.pi, 0]])
 
 sp = sparse.csr_matrix(a)
-find = sparse.find(sp)
-indices = [x.tolist() for x in find[0:2]]
-print(indices)
-values = find[2]
-shape = a.shape
-print(shape)
-
-tsp = tf.sparse.SparseTensor(indices=indices, values=values, dense_shape=shape)
+coo = sp.tocoo()
+indices = np.mat([coo.row, coo.col]).transpose()
+tsp = tf.SparseTensor(indices, coo.data, coo.shape)
 
 with tf.Session() as s:
     print(s.run(tsp))

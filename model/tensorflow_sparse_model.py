@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow.compat.v1 as tf
+from scipy import sparse as sp
 
 # Apenas para ter
 def deli(a):
@@ -9,20 +10,27 @@ def deli(a):
             a[i,:] *= 0
     return a
 
-def acc(a, b): return (a * b).sum() / len(a)
+def acc(a, b):
+    return (a * b).sum() / len(a)
+
+def sparse(a):
+    coo = sp.csr_matrix(a).tocoo()
+    indices = np.mat([coo.row, coo.col]).transpose()
+    return tf.SparseTensorValue(indices, coo.data, coo.shape)
+
 
 # Operações de controle de fluxo
 def cond(t1, t2, t3, t4, i, n):
     return tf.less(i, n)
 
 def body(t1, t2, t3, t4, i, n):
-    # t1: (l, labels)
-    # t2: (k, labels)
-    # t3: (k, labels)
-    # t4: (k, n)
+    # t1: (l, labels)  Ylabel
+    # t2: (k, labels)  prevY
+    # t3: (k, labels)  invA
+    # t4: (k, n)       W
 
-    #TODO: Multiplicação esparsa
-    return [t1, tf.matmul(t3,tf.matmul(t4, tf.concat([t1, t2], 0))), t3, t4, tf.add(i, 1), n]
+    # TALVEZ MUDE
+    return [t1, tf.matmul(t3,tf.sparse.sparse_dense_matmul(t4, tf.concat([t1, t2], 0))), t3, t4, tf.add(i, 1), n]
 
 
 def train(G, epochs, lr, method, verbose=True):
@@ -46,17 +54,16 @@ def train(G, epochs, lr, method, verbose=True):
     idx = tf.constant(100)
     prevY = tf.zeros((k, labels), dtype=tf.float64)
 
-    #TODO: transformar os numéricos em esparsos
     # Numeric
     Ytest = G.Ytest.reshape((G.n_unlab, labels))
     Ylabel_numeric = G.Ylabel.reshape((l, labels))
     Ytarget_numeric = G.Ytarget.reshape((G.n_train, labels))
-    adj_numeric = G.adj[-k:,].reshape((k*n, 1)).astype(np.float64)
-    known_numeric = G.feats[:,-k*n:]
+    adj_numeric = sparse(G.adj[-k:,].reshape((k*n, 1)).astype(np.float64))
+    known_numeric = sparse(G.feats[:,-k*n:])
 
     # Placeholders
-    Ylabel = tf.sparse.placeholder(dtype=tf.float64, shape=[l, labels])
-    Ytarget = tf.sparse.placeholder(dtype=tf.float64, shape=[G.n_train, labels])
+    Ylabel = tf.placeholder(dtype=tf.float64, shape=[l, labels])
+    Ytarget = tf.placeholder(dtype=tf.float64, shape=[G.n_train, labels])
     adj = tf.sparse.placeholder(dtype=tf.float64, shape=[k*n, 1])
     known = tf.sparse.placeholder(dtype=tf.float64, shape=[G.n_feat, k*n])
 
@@ -66,11 +73,11 @@ def train(G, epochs, lr, method, verbose=True):
         W1 = tf.Variable(np.random.normal(scale=0.01, size=(1, G.n_feat)))
         b1 = tf.Variable(tf.zeros((1, 1), dtype=tf.float64))
         
-        #TODO: Tornar W em SparseTensor
         # Modelo
-        W = tf.reshape(tf.multiply(tf.transpose(tf.divide(1., tf.add(
-            tf.ones([1, k*n], tf.float64), tf.math.exp(-tf.add(tf.matmul(
-            W1, known), b1))))), adj), shape=(k,n))
+        W = tf.sparse.reshape(tf.sparse.transpose(tf.sparse.transpose(adj).__mul__(
+            tf.divide(1., tf.add(tf.ones([1, k*n], tf.float64),
+            tf.math.exp(-tf.add(tf.transpose(tf.sparse.sparse_dense_matmul(
+            tf.sparse.transpose(known),tf.transpose(W1))),b1)))))), shape=(k,n))
 
     elif(method == 2):
         # Variáveis
@@ -79,16 +86,15 @@ def train(G, epochs, lr, method, verbose=True):
         W2 = tf.Variable(np.random.normal(scale=0.01, size=(n_outputs, n_hiddens)))
         b2 = tf.Variable(tf.zeros(n_outputs, dtype=tf.float64))
 
-        #TODO: Tornar W em SparseTensor
         # Modelo
-        W = tf.reshape(tf.multiply(tf.transpose(tf.divide(1., tf.add(
-            tf.ones([1, k*n], tf.float64), tf.math.exp(-tf.add(tf.matmul(
-            W2, tf.nn.relu(tf.add(tf.matmul(W1, known), b1))), b2))))), adj), shape=(k,n))
+        W = tf.sparse.reshape(tf.sparse.transpose(tf.sparse.transpose(adj).__mul__(tf.divide(1.,
+            tf.add(tf.ones([1, k*n], tf.float64),tf.math.exp(-tf.add(tf.matmul(W2,
+            tf.nn.relu(tf.add(tf.transpose(tf.sparse.sparse_dense_matmul(tf.sparse.transpose(known),
+            tf.transpose(W1))), b1))), b2)))))), shape=(k,n))
 
     else: return
 
-    #TODO: Usar reduce sum do sparse
-    invA = tf.linalg.tensor_diag(tf.divide(1., (tf.math.reduce_sum(W, 1))[-k:,]))
+    invA = tf.linalg.tensor_diag(tf.divide(1., (tf.sparse.reduce_sum(W, 1))[-k:,]))
     Y = tf.while_loop(cond, body, [Ylabel, prevY, invA, W, 0, idx])[1][:G.n_train]
 
     # Otimizador
@@ -104,7 +110,11 @@ def train(G, epochs, lr, method, verbose=True):
     # Label propagation
     for epoch in range(epochs): 
         # Computa 
-        _, l, Y_numeric = sess.run([opt, loss, Y], feed_dict={adj: adj_numeric, known: known_numeric, Ylabel: Ylabel_numeric, Ytarget: Ytarget_numeric})
+        _, l, Y_numeric = sess.run([opt, loss, Y],
+            feed_dict={adj: adj_numeric,
+                       known: known_numeric,
+                       Ylabel: Ylabel_numeric,
+                       Ytarget: Ytarget_numeric})
 
         # Escreve saída
         if verbose:
