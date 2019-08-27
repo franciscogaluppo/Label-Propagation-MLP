@@ -16,7 +16,7 @@ def acc(a, b):
 def sparse(a):
     coo = sp.csr_matrix(a).tocoo()
     indices = np.mat([coo.row, coo.col]).transpose()
-    return tf.SparseTensorValue(indices, coo.data, coo.shape)
+    return (indices, coo.data, coo.shape)
 
 
 # Operações de controle de fluxo
@@ -73,6 +73,7 @@ def train(G, epochs, lr, method, verbose=True):
         W1 = tf.Variable(np.random.normal(scale=0.01, size=(1, G.n_feat)))
         b1 = tf.Variable(tf.zeros((1, 1), dtype=tf.float64))
         
+        #TODO: Tirar os transpose
         # Modelo
         W = tf.sparse.reshape(tf.sparse.transpose(tf.sparse.transpose(adj).__mul__(
             tf.divide(1., tf.add(tf.ones([1, k*n], tf.float64),
@@ -87,19 +88,11 @@ def train(G, epochs, lr, method, verbose=True):
         b2 = tf.Variable(tf.zeros(n_outputs, dtype=tf.float64))
 
         # Modelo
-        #W = tf.sparse.reshape(tf.sparse.transpose(tf.sparse.transpose(adj).__mul__(tf.divide(1.,
-        #    tf.add(tf.ones([1, k*n], tf.float64),tf.math.exp(-tf.add(tf.matmul(W2,
-        #    tf.nn.relu(tf.add(tf.transpose(tf.sparse.sparse_dense_matmul(tf.sparse.transpose(known),
-        #    tf.transpose(W1))), b1))), b2)))))), shape=(k,n))
+        W = tf.sparse.reshape(adj.__mul__(tf.transpose(tf.divide(1.,
+            tf.add(tf.ones([1, k*n], tf.float64),tf.math.exp(-tf.add(tf.matmul(W2,
+            tf.nn.relu(tf.add(tf.transpose(tf.sparse.sparse_dense_matmul(known, W1,
+            adjoint_a=True,adjoint_b=True)), b1))), b2)))))), shape=(k,n))
 
-        W = tf.transpose(tf.sparse.sparse_dense_matmul(known, W1,adjoint_a=True,adjoint_b=True))
-
-        print("W1:", W1.shape)
-        print("W1^T:", tf.transpose(W1).shape)
-        print("\nknown:", known.shape)
-        print("known^T:", tf.sparse.transpose(known).shape)
-        print("\n(known^T . W1^T)^T:", W.shape)
-        return
 
     else: return
 
