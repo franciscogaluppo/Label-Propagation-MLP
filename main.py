@@ -5,6 +5,8 @@ from graphs.random_features import random_features as graph
 import model.mxnet_model as model1
 import model.tensorflow_model as model2
 import model.tensorflow_sparse_model as model3
+import model.pytorch_sparse_model as model4
+
 
 #-------------------------------------------------------------#
 
@@ -27,3 +29,7 @@ model2.train(G, num_epochs, lr, method)
 ### Tensorflow sparse
 print("\n\nTENSORFLOW SPARSE")
 model3.train(G, num_epochs, lr, method)
+
+### Pytorch sparse
+print("\n\nPYTORCH SPARSE")
+model4.train(G, num_epochs, lr, method)
