@@ -12,17 +12,17 @@ import model.tensorflow_sparse_model as model3
 method, labels = 2, 10
 n_lab, n_train, n_unlab, n_feat, p = 20, 60, 20, 10, 0.3
 G = graph(n_lab, n_train, n_unlab, n_feat, labels, method, p=p)
-num_epochs, lr = 20, 0.5
+num_epochs, lr = 10, 0.5
 
 #-------------------------------------------------------------#
 
 ### MXNET
 print("MXNET")
-#model1.train(G, num_epochs, lr, method)
+model1.train(G, num_epochs, lr, method)
 
 ### Tensorflow
 print("\n\nTENSORFLOW")
-#model2.train(G, num_epochs, lr, method)
+model2.train(G, num_epochs, lr, method)
 
 ### Tensorflow sparse
 print("\n\nTENSORFLOW SPARSE")
