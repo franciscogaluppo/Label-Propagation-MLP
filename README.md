@@ -1,34 +1,35 @@
-# Label-Propagation
+# Label Propagation using MLP Classifier
+In this model we use MLP Classifier to train the Label Propagation algorithm for vertex classification with edge features. 
 
-Código para *Label Propagation* treinado por *MLP Classifier*.
+All of the researchers are from the Computer Science Department at Universidade Federal de Minas Gerais (UFMG), Brazil:
 
-**Francisco Galuppo Azevedo**
+Francisco Galuppo Azevedo - franciscogaluppo@dcc.ufmg.br
 
-franciscogaluppo@dcc.ufmg.br
+Fabricio Murai - murai@dcc.ufmg.br
 
-UFMG, Brasil
+## Our paper
 
+*No paper yet.*
 
-### A que pé anda o projeto
+## Dependencies
+*To be written...*
 
-Então, os planos são:
+## How to run our code
+*To be written...*
 
-- Calcular a matriz de pesos no tensorflow :+1:
-- Criar o modelo de tensorflow esparso
-- Terminar e testar classe que lê as features dos vértices e prepara o grafo
-- Testar com os dados do CORA
+## Label Propagation
+[Label Propagation](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.14.3864&rep=rep1&type=pdf) is a semi-supervised machine learning algorithm that assigns labels to previously unlabeled vertices. At the start of the algorithm, a (generally small) subset of the vertices have labels. These labels are propagated to the unlabeled vertices throughout the course of the algorithm.
 
+![](videos/README.gif?raw=true)
 
-### Descrição
+### The algorithm
+*To be written...*
 
-`INCOMPLETO`
+## MLP classifier
+*To be written...*
 
-Trata da implementação do algoritmo de Label Propagation treinado por um classificadorMLP, com duas implementações distintas. A primeira utiliza a biblioteca *mxnet*, enquanto a segunda utiliza a *tensorflow*
+## Different implementations
+*To be written...*
 
-Uma descrição melhor está por vir.
-
-
-### Bibliotecas necessárias
-
-`INCOMPLETO`
-
+## Results
+*To be written...*
