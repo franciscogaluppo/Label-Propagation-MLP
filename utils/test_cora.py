@@ -1,20 +1,26 @@
-import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+import numpy as np
+from graphs.vertex_features import vertex_features as graph
+from graphs.vertex_features_sparse import vertex_features_sparse as sparse
 
-from graphs.random_features import random_features as graph
-from graphs.random_features_sparse import random_features_sparse as sparse
 import model.mxnet_model as model1
 import model.tensorflow_model as model2
 import model.tensorflow_sparse_model as model3
 import model.pytorch_sparse_model as model4
 
+# Reading the data
+data = np.load("../datasets/cora.npz", allow_pickle=True)
+adj = csr((data['adj_data'], data['adj_indices'], data['adj_indptr']), shape=data['adj_shape'])
+attr = csr((data['attr_data'], data['attr_indices'], data['attr_indptr']), shape=data['attr_shape'])
+labels = data['labels']
+
+# THIS WILL CHANGE IN THE FUTURE
+# NOT USING SPARSE MATRICES RIGHT NOW
 
 #-------------------------------------------------------------#
 
-# Cria um grafo exemplo
-method, labels = 2, 10
-n_lab, n_train, n_unlab, n_feat, p = 20, 60, 20, 10, 0.3
-G = graph(n_lab, n_train, n_unlab, n_feat, labels, method, p=p)
+method = 2
+n_lab, n_train, n_unlab = .2, .6, .2
+G = graph(adj.todense(), attr.todense(), labels)
 H = sparse(G)
 num_epochs, lr = 10, 0.5
 

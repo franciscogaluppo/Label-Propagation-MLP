@@ -1,7 +1,6 @@
 import numpy as np
 import tensorflow.compat.v1 as tf
 import numpy as np
-from scipy import sparse as sp
 
 # Apenas para ter
 def deli(a):
@@ -13,19 +12,6 @@ def deli(a):
 
 def acc(a, b):
     return (a * b).sum() / len(a)
-
-def sparse(a):
-    coo = sp.csr_matrix(a).tocoo()
-    indices = np.mat([coo.row, coo.col]).transpose()
-    return (indices, coo.data, coo.shape)
-
-def sparse_diag(a):
-    m = a.shape[1]
-    dim = np.prod(a.shape)
-    coo = sp.csr_matrix(a).tocoo()
-    indices = [[b[0]*m + b[1]]*2 for b in np.mat([coo.row, coo.col]).transpose().tolist()]
-    return (indices, coo.data, (dim, dim))
-
 
 # Operações de controle de fluxo
 def cond(t1, t2, t3, t4, i, n):
@@ -66,8 +52,10 @@ def train(G, epochs, lr, method, verbose=True):
     Ytest = G.Ytest.reshape((G.n_unlab, labels))
     Ylabel_numeric = G.Ylabel.reshape((l, labels))
     Ytarget_numeric = G.Ytarget.reshape((G.n_train, labels))
-    adj_numeric = sparse_diag(G.adj[-k:,].reshape((k*n, 1)).astype(np.float64))
-    known_numeric = sparse(G.feats[:,-k*n:])
+    #adj_numeric = sparse_diag(G.adj[-k:,].reshape((k*n, 1)).astype(np.float64))
+    adj_numeric = G.adj_sparse
+    #known_numeric = sparse(G.feats[:,-k*n:])
+    known_numeric = G.feats_sparse
 
     # Placeholders
     Ylabel = tf.placeholder(dtype=tf.float64, shape=[l, labels])
