@@ -13,16 +13,11 @@ graph = cPickle.load(open("../datasets/pubmed/ind.pubmed.graph", 'rb'))
 
 # Creating adjacency matrix
 n = len(graph)
-adj = [[0]*n]*n
+adj = np.zeros((n,n), dtype=int)
 
-for i in graph:
-    for j in graph[i]:
-        print(i, j)
+for i, k in graph.items():
+    for j in k:
         adj[i][j] = 1
-
-print(len(features))
-
-quit()
 
 #-------------------------------------------------------------#
 
