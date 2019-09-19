@@ -3,7 +3,7 @@ import numpy as np
 from operator import itemgetter as get
 from itertools import groupby as gb
 
-class vertex_features_csr(graph):
+class vertex_features(graph):
 
     def __init__(self, adj, features, labels, n_lab=0.2, n_train=0.6, n_unlab=0.2):
         """
@@ -19,10 +19,9 @@ class vertex_features_csr(graph):
         # Salva valores para que os outros métodos possam acessar
         n = self.vertices = int(adj.shape[0])
         l = self.n_lab = int(np.floor(n_lab*n))
-        k = n-l
-
         self.n_train = int(np.ceil(n_train*n))
         self.n_unlab = n - (self.n_lab + self.n_train)
+        self.labels = labels.shape[1]
 
         # Salva adj e a lista de arestas
         self.adj = adj
@@ -53,5 +52,5 @@ class vertex_features_csr(graph):
         feats = np.zeros((n*n, self.n_feat))
         for e in range(self.edges):
             i, j = self.edge_list[e]
-            feats[i*n+j] = np.concat((attr[]))
+            feats[i*n+j] = np.concatenate((attr[i], attr[j]))
         self.feats = feats.T
