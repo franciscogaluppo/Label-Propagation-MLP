@@ -6,28 +6,43 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import pdb
+import torch.nn.functional as F
+from torch.autograd import Variable
 
 
 class Net(nn.Module):
-    def __init__(self, feats, row_idx, col_idx, V2_to_E):
+    def __init__(self, feats, n, V2_to_E, Ylabel):
         super(Net, self).__init__()
         self.fc1 = nn.Linear(10,1) # this layer does W_1 x + b_1
         self.m = torch.nn.Softmax(dim=1)
         self.feats = feats
-        self.i = torch.LongTensor([row_idx,col_idx])
-        self.n = np.max([row_idx,col_idx])+1
+        #self.i = torch.LongTensor([row_idx,col_idx])
+        #self.n = np.max([row_idx,col_idx])+1
+        self.n = n
+        self.labels = Ylabel.shape[1]
         self.V2_to_E = V2_to_E
+        self.Ylabel = Ylabel
+
+        #self.emb = Variable(torch.randn(self.n,10), requires_grad=True)
+        #self.W2  = Variable(torch.randn(10+self.labels,self.labels), requires_grad=True)
 
 
     def forward(self, yhat):
         weights = torch.sigmoid(self.fc1(self.feats))
-        W = torch.reshape(torch.mm(self.V2_to_E,weights),torch.Size([self.n,self.n]))
-        #W = torch.sparse.FloatTensor(self.i, weights[:,0], torch.Size([self.n,self.n]))
-        #W.coalesce()
-        for _ in range(3):
-            yhat = torch.mm(W,yhat)
 
-        yhat = self.m(yhat)
+        #pdb.set_trace()
+        W = torch.reshape(torch.mm(self.V2_to_E,weights),torch.Size([self.n,self.n]))[self.Ylabel.shape[0]:,:]
+        #W = F.normalize(W,p=1,dim=0)
+
+        #emb = torch.cat((self.emb,torch.cat((self.Ylabel,yhat))),dim=1)
+        for _ in range(3):
+            yhat = torch.mm(W,torch.cat((self.Ylabel,yhat)))
+            #emb = torch.mm(W,emb)
+
+        #yhat = torch.mm(emb[self.Ylabel.shape[0]:],self.W2)
+        #yhat = self.m(yhat)
+        yhat = F.normalize(yhat,p=1,dim=1)
+
         return yhat
 
 
@@ -118,34 +133,36 @@ def train(G, epochs, theta, lr, method=1, verbose=True):
     :param lr: Taxa de aprendizado
     """
 
-    edges = G.edges
-    row_idx, col_idx = zip(*G.edge_list)
-    row_idx = np.array(row_idx)
-    col_idx = np.array(col_idx)
-    nz = row_idx*G.vertices+col_idx
+    edges = G.edges # (i->j)
+    row_idx, col_idx = zip(*G.edge_list) #i, j
+    row_idx = np.array(row_idx) #i
+    col_idx = np.array(col_idx) #j
+    nz = col_idx*G.vertices+row_idx #j*n + i
 
-    i  = torch.LongTensor([[idx, ix] for ix,idx in enumerate(nz)])
+    i = torch.LongTensor([[idx, ix] for ix,idx in enumerate(nz)])
     v = torch.FloatTensor([1]*len(nz))
     V2_to_E = torch.sparse.FloatTensor(i.t(), v, torch.Size([G.vertices*G.vertices,len(nz)]) )
+    V2_to_E = V2_to_E.coalesce()
 
-    # i = torch.LongTensor([ [ix,jx] for ix in nz for jx in range(10) ] )
-    # v = torch.FloatTensor(G.feats[:,nz].flatten('F') )
-    # X = torch.sparse.FloatTensor(i.t(), v, torch.Size([G.vertices*G.vertices,10]) )
-    # X.coalesce()
-    net = Net(torch.tensor(G.feats[:,nz].T).float(), row_idx, col_idx, V2_to_E)
+    net = Net(torch.tensor(G.feats[:,nz].T).float(), G.vertices, V2_to_E, torch.tensor(G.Ylabel).float())
 
-    # TODO: inicializar cada linha uniforme no 10-simplex
-    y_pred = np.random.randn(G.vertices,G.labels)
-    y_pred[:G.Ylabel.shape[0],:] = G.Ylabel
+    # inicializar cada linha uniforme no K-simplex, onde K é o numero de classes
+    y_pred = np.random.dirichlet([1]*G.labels,G.n_train+G.n_unlab)
     y_pred = torch.tensor(y_pred).float()
+    y_target = torch.tensor(np.argmax(G.Ytarget,axis=1))
+    y_test = torch.tensor(np.argmax(G.Ytest,axis=1))
 
-    y = torch.tensor(np.vstack((G.Ylabel,G.Ytarget,G.Ytest))).float()
+    #pdb.set_trace()
+    idx = range(0,y_target.shape[0],round(y_target.shape[0]/10))
 
     for epoch in range(epochs):
         y_pred = net(y_pred)
-        loss = (y_pred[G.n_lab:-G.n_unlab] - y[G.n_lab:-G.n_unlab]).pow(2).sum()
-        print(epoch,loss.item())
-        loss.backward(retain_graph=True)
+        train_loss = F.cross_entropy(y_pred[:G.n_train], y_target)
+        test_loss  = F.cross_entropy(y_pred[G.n_train:], y_test)
+        print('epoch: {}, train_error: {}, test_error: {}'.format(epoch,train_loss.item(),test_loss.item())
+        print(np.argmax(y_pred[idx].detach().numpy(),axis=1),y_target[idx] )
+        #pdb.set_trace()
+        train_loss.backward(retain_graph=True)
 
     # adj_numeric = torch.sparse.FloatTensor(G.adj[-k:,].reshape((k*n, 1)).astype(np.float64))
 
