@@ -2,6 +2,8 @@ from graphs.graph import graph
 import numpy as np
 from operator import itemgetter as get
 from itertools import groupby as gb
+from scipy.sparse import csr_matrix as csr
+from scipy.sparse import coo_matrix as coo
 
 def sparse_diag(a):
     m = a.shape[1]
@@ -12,7 +14,7 @@ def sparse_diag(a):
 
 class vertex_features_csr(graph):
 
-    def __init__(self, adj, attr, labels, n_lab=0.2, n_train=0.6, n_unlab=0.2):
+    def __init__(self, adj, attr, labels, n_lab=0.2, n_train=0.6, n_unlab=0.2, one_hot=False):
         """
         Class initialization
         :param adj: 
@@ -40,7 +42,7 @@ class vertex_features_csr(graph):
 
         # Chama os métodos de criação
         self.features(attr)
-        self.arrays(labels)
+        self.arrays(labels, one_hot)
 
 
     def features(self, attr):
@@ -76,18 +78,23 @@ class vertex_features_csr(graph):
                     indices.append([q+attr.shape[1], (i-k)*n+j])
                     data.append(b.data[q])
     
-        self.feats_sparse = (indices, data, shape)
+        self.feats_sparse = coo((data, tuple(zip(*indices))), shape=shape)
 
 
-    def arrays(self, data_labels):
+    def arrays(self, data_labels, one_hot):
         """
         Split vertices between labeled, train and unlabeled
         """
 
         # Cria os 1-hot encoded labels 
-        self.labels = max(data_labels)+1
-        Ylabel = np.zeros((self.vertices, self.labels))
-        Ylabel[np.arange(self.vertices), data_labels] = 1
+        if not one_hot:    
+            self.labels = max(data_labels)+1
+            Ylabel = np.zeros((self.vertices, self.labels))
+            Ylabel[np.arange(self.vertices), data_labels] = 1
+
+        else:
+            self.labels = data_labels.shape[1]
+            Ylabel = data_labels
 
         # Guarda os valores
         self.Ylabel = Ylabel[:self.n_lab,:] 
