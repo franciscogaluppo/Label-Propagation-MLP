@@ -23,7 +23,7 @@ def body(t1, t2, t3, t4, i, n):
     return [t1, tf.matmul(t3,tf.matmul(t4, tf.concat([t1, t2], 0))), t3, t4, tf.add(i, 1), n]
 
 
-def train(G, epochs, lr, method, verbose=True):
+def train(G, epochs, lr, method, verbose=True, return_text=False):
     """
     Train and evaluate a model with CPU.
     :param G: Objeto graph com todos os dados
@@ -107,6 +107,14 @@ def train(G, epochs, lr, method, verbose=True):
             train_acc = acc(Yhard[:G.n_train], Ytarget_numeric)
             test_acc = acc(Yhard[-G.n_unlab:], Ytest)
 
-            print('epoch {:3d}, loss {:.4f}, train acc {:.3f}, test acc {:.3f}'.format( epoch+1, train_l, train_acc, test_acc))
+            if verbose:
+                print('epoch {:3d}, loss {:.4f}, train acc {:.3f}, test acc {:.3f}'.format( epoch+1, train_l, train_acc, test_acc))
 
     sess.close()
+
+    if return_text:
+        Yhard = deli(Y_numeric)
+        train_l = l / len(Y_numeric)
+        train_acc = acc(Yhard[:G.n_train], Ytarget_numeric)
+        test_acc = acc(Yhard[-G.n_unlab:], Ytest)
+        return [train_l, train_acc, test_acc]

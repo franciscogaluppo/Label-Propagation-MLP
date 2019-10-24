@@ -41,7 +41,6 @@ class random_features(graph):
         self.labels = labels
 
         # Cria grafo e rótulos
-        np.random.seed(3)
         self.create_edges(p)
         self.create_features()
         self.create_labels(method)
